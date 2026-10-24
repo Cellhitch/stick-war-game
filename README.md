@@ -30,6 +30,7 @@ python scripts/compose_music.py
 node --check audio.js
 node --test tests/audio.test.cjs
 node --test tests/victory.test.cjs
+node --test tests/learning.test.cjs
 ```
 
 The audio lifecycle tests cover repeated start requests, leaving during loading,
@@ -50,3 +51,24 @@ player can enable its soundtrack with the video sound button. Its level follows
 the music slider and global mute. Replay and navigation remain available if
 playback is blocked or the video fails. Leaving the results screen stops the
 video, and hiding the browser tab pauses it without losing playback position.
+
+## Pre-game learning gate
+
+Every new game and replay starts with two checkpoints: select 弟弟 or 姐姐, then
+answer two distinct questions randomly sampled from the matching 20-item bank.
+弟弟 uses original Grade 2 Chinese word/pronunciation practice. 姐姐 uses original
+Grade 6 mathematics revision questions, including fractions, percentages, ratio,
+circles, solids and proportion, with a Shenzhen park application. The mathematics
+bank covers whole-year revision rather than a specified textbook edition or term;
+these are practice questions, not official Shenzhen examination items.
+
+An incorrect response shows the correct answer and explanation. The child must
+acknowledge it and answer the same question again; it does not count as passed.
+Choices are reshuffled on retries. Correct responses also provide explanations.
+Both answers and the final confirmation are required before the battle-mode
+selector opens. Rules and replay shortcuts pass through the same gate. Progress
+is kept only in memory for the current entry; nothing is sent to a server.
+
+Edit `learning-data.js` to adjust either bank. `learning-core.js` holds the
+session rules; `learning.js` and `learning.css` implement the watercolor screens.
+The gate is a browser-local learning flow, not a server-enforced access control.

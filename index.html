@@ -144,7 +144,8 @@
   .soldier-chip.king .chip-badge { background: #ffe082; }
   .chip-sprite {
     width: 36px; height: 40px; object-fit: contain; flex-shrink: 0;
-    image-rendering: auto;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: high-quality;
   }
   .soldier-chip .chip-name { min-width: 3.5em; }
   .soldier-chip .hp-mini {
@@ -223,7 +224,9 @@
     height: auto;
     margin: 0 auto 4px;
     object-fit: contain;
-    filter: drop-shadow(0 8px 4px rgba(108, 84, 54, 0.12));
+    filter: drop-shadow(0 6px 6px rgba(108, 84, 54, 0.08));
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: high-quality;
   }
   .origin-drawing {
     margin: 0 0 16px;
@@ -784,6 +787,8 @@ function drawUnitSprite(x, groundY, facing, soldier, pose, ox) {
 /* ========== Canvas 火柴人绘制 ========== */
 const canvas = document.getElementById('arena');
 const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = 'high';
 
 function resizeCanvas() {
   const wrap = canvas.parentElement;

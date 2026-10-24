@@ -139,6 +139,7 @@ async function startBgm() {
 }
 function syncAudioScene() {
   applyAudioLevels();
+  if (typeof syncVictoryAudio === 'function') syncVictoryAudio();
   if (musicWanted()) startBgm();
   else {
     stopBgm();

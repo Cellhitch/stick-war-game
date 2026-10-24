@@ -219,9 +219,9 @@
   }
   .victory-king {
     display: block;
-    width: min(200px, 58vw);
+    width: min(160px, 42vw);
     height: auto;
-    margin: 4px auto 8px;
+    margin: 0 auto 4px;
     object-fit: contain;
     filter: drop-shadow(0 8px 4px rgba(108, 84, 54, 0.12));
   }
@@ -501,7 +501,19 @@
   <h2 id="victoryTitle">大战结束！</h2>
   <p class="winner-name" id="winnerName"></p>
   <p id="winnerSide" style="opacity:0.8;margin-top:4px;"></p>
-  <img id="victoryKing" class="victory-king" alt="" width="200" height="260">
+  <img id="victoryKing" class="victory-king" alt="" width="180" height="234">
+  <div class="victory-film">
+    <video id="victoryVideo" width="1280" height="720" playsinline muted preload="none"
+      poster="assets/video/victory-poster.jpg" aria-label="士兵胜利庆祝动画，时长五秒">
+      <source src="assets/video/victory-5s.mp4" type="video/mp4">
+      你的浏览器暂不支持播放视频。
+    </video>
+  </div>
+  <p id="victoryVideoNotice" class="victory-video-notice" role="status" hidden></p>
+  <div class="victory-film-controls">
+    <button type="button" id="victoryVideoReplay">重播庆祝</button>
+    <button type="button" id="victoryVideoSound" aria-pressed="false">开启视频声音</button>
+  </div>
   <div class="btn-row">
     <button class="primary" id="btnReplay">再来一局</button>
     <button id="btnToTitle">回标题</button>
@@ -509,6 +521,7 @@
 </section>
 
 <script src="audio.js"></script>
+<script src="victory.js"></script>
 <script>
 /* ========== 数据：两军花名册 ========== */
 const ROSTER = {
@@ -612,6 +625,8 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   state.screen = id;
   syncAudioScene();
+  if (id === 'victory-screen') playVictoryCelebration();
+  else stopVictoryCelebration();
 }
 
 /* ========== 战斗音效 ========== */

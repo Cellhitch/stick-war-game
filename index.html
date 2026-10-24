@@ -509,14 +509,14 @@
   <div class="victory-film">
     <video id="victoryVideo" width="1280" height="720" playsinline muted preload="none"
       poster="assets/video/victory-poster.jpg" aria-label="士兵胜利庆祝动画，时长五秒">
-      <source src="assets/video/victory-5s.mp4" type="video/mp4">
+      <source src="assets/video/victory-5s-silent.webm" type="video/webm">
+      <source src="assets/video/victory-5s-silent.mp4" type="video/mp4">
       你的浏览器暂不支持播放视频。
     </video>
   </div>
   <p id="victoryVideoNotice" class="victory-video-notice" role="status" hidden></p>
   <div class="victory-film-controls">
     <button type="button" id="victoryVideoReplay">重播庆祝</button>
-    <button type="button" id="victoryVideoSound" aria-pressed="false">开启视频声音</button>
   </div>
   <div class="btn-row">
     <button class="primary" id="btnReplay">再来一局</button>
@@ -525,7 +525,7 @@
 </section>
 
 <script src="audio.js"></script>
-<script src="victory.js"></script>
+<script src="victory.js?v=2"></script>
 <script src="learning-data.js"></script>
 <script src="learning-core.js"></script>
 <script src="learning.js"></script>
@@ -714,63 +714,6 @@ function sfxClash() {
 function sfxWin() { [440,554,659,880].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'triangle',0.09), i*120)); }
 function sfxSelect() { beep(520, 0.06, 'sine', 0.05); }
 function sfxKing() { [330,440,550].forEach((f,i)=>setTimeout(()=>beep(f,0.2,'triangle',0.1), i*150)); }
-
-/** 更接近真猫的共振峰合成（采样失败时回退） */
-function sfxMeowSynth() {
-  if (state.muted) return;
-  try {
-    ensureAudio();
-    const t0 = audioCtx.currentTime;
-    const dur = 0.38 + Math.random() * 0.12;
-    const base = 650 + Math.random() * 180;
-    // carrier noise through formant filters (cat-like)
-    const n = Math.ceil(audioCtx.sampleRate * dur);
-    const buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) {
-      const t = i / audioCtx.sampleRate;
-      const pitch = base * (1.15 - 0.45 * (t / dur)) * (1 + 0.03 * Math.sin(t * 40));
-      const vibr = Math.sin(2 * Math.PI * pitch * t);
-      data[i] = (Math.random() * 2 - 1) * 0.35 + vibr * 0.65;
-    }
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf;
-    const f1 = audioCtx.createBiquadFilter();
-    f1.type = 'bandpass'; f1.frequency.value = 900; f1.Q.value = 6;
-    const f2 = audioCtx.createBiquadFilter();
-    f2.type = 'bandpass'; f2.frequency.value = 1600; f2.Q.value = 5;
-    const g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.001, t0);
-    g.gain.linearRampToValueAtTime(0.18, t0 + 0.04);
-    g.gain.linearRampToValueAtTime(0.12, t0 + dur * 0.55);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    src.connect(f1); f1.connect(g);
-    src.connect(f2); f2.connect(g);
-    g.connect(masterGain || audioCtx.destination);
-    src.start(t0); src.stop(t0 + dur);
-  } catch(e) {}
-}
-
-function sfxMeow() {
-  if (state.muted) return;
-  try { ensureAudio(); } catch (_) { return; }
-  loadMeowBuffers().then(bufs => {
-    if (state.muted) return;
-    if (bufs && bufs.length) {
-      try {
-        const buf = bufs[Math.floor(Math.random() * bufs.length)];
-        const src = audioCtx.createBufferSource();
-        src.buffer = buf;
-        const g = audioCtx.createGain();
-        g.gain.value = 0.16 + Math.random() * 0.04;
-        src.connect(g); g.connect(masterGain || audioCtx.destination);
-        src.start();
-        return;
-      } catch (e) {}
-    }
-    sfxMeowSynth();
-  }).catch(() => sfxMeowSynth());
-}
 
 /* ========== 单位立绘精灵 ========== */
 const SPRITE_FILES = {
@@ -1257,7 +1200,6 @@ function drawSpectatorCats(now) {
     if (now >= c.nextMeow && now > c.meowUntil) {
       c.meowUntil = now + 900;
       c.nextMeow = now + 5500 + (i * 2300) % 8000;
-      if (state.screen === 'battle-screen' && !state.muted) sfxMeow();
     }
     const bobY = Math.sin(now / 450 + c.bob) * 2.5;
     const facing = c.side === 'left' ? 1 : -1;

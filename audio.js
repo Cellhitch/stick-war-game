@@ -9,11 +9,8 @@ let musicOffset = 0;
 let musicStartedAt = 0;
 let audioUnlocked = false;
 let musicRetryAfter = 0;
-let meowBuffers = [];
-let meowLoadPromise = null;
 const AUDIO_KEY = 'stickwar.audio.v1';
 const MUSIC_SECONDS = 68.571417;
-const MEOW_SAMPLES = ['assets/audio/cat-1.mp3','assets/audio/cat-2.mp3','assets/audio/cat-3.mp3'];
 let audioSettings = { music: .42, effects: .55, muted: false };
 try {
   const saved = JSON.parse(localStorage.getItem(AUDIO_KEY) || 'null');
@@ -139,7 +136,6 @@ async function startBgm() {
 }
 function syncAudioScene() {
   applyAudioLevels();
-  if (typeof syncVictoryAudio === 'function') syncVictoryAudio();
   if (musicWanted()) startBgm();
   else {
     stopBgm();
@@ -152,17 +148,6 @@ function unlockAudioFromGesture() {
     ensureAudio();
     syncAudioScene();
   } catch (_) { audioStatus('此浏览器暂不支持游戏声音'); }
-}
-function loadMeowBuffers() {
-  if (meowLoadPromise) return meowLoadPromise;
-  meowLoadPromise = Promise.all(MEOW_SAMPLES.map(async url => {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) return null;
-      return await audioCtx.decodeAudioData(await response.arrayBuffer());
-    } catch (_) { return null; }
-  })).then(buffers => (meowBuffers = buffers.filter(Boolean)));
-  return meowLoadPromise;
 }
 function initializeAudioControls() {
   state.muted = audioSettings.muted;

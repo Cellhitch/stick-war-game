@@ -16,7 +16,8 @@ Music begins after a user gesture when entering the battlefield. It pauses on
 mute, leaving the battlefield, and hiding the browser tab; the playback position
 is preserved. Music/effect levels and mute preference are stored locally. A
 single AudioContext and compressor mix the soundtrack with the existing effects.
-The existing cat samples remain unchanged, served as separate files.
+Spectator cats retain their visual animations but make no sounds; there are no
+cat samples, synthesized meows, or cat-audio network requests.
 
 To reproduce the soundtrack (requires Python, numpy, ffmpeg):
 
@@ -44,11 +45,13 @@ remain useful.
 ## Victory celebration
 
 After the winner is determined, the results screen plays
-`assets/video/victory-5s.mp4` once: the existing six watercolor soldiers celebrate
-for five seconds (1280×720, H.264/AAC). The winner's name and army remain visible
-above the video. Playback starts muted for mobile autoplay compatibility; the
-player can enable its soundtrack with the video sound button. Its level follows
-the music slider and global mute. Replay and navigation remain available if
+the existing six watercolor soldiers celebrating for five seconds (1280×720).
+`assets/video/victory-5s-silent.webm` (VP9) is the preferred source; browsers that
+do not support it use `assets/video/victory-5s-silent.mp4` (H.264). Both files have
+no audio track. This keeps the GIF-like animation smaller and avoids audio-based
+autoplay restrictions. The winner's name and army remain visible above it.
+Playback is muted and inline, plays once, and loads only when needed.
+Replay and navigation remain available if
 playback is blocked or the video fails. Leaving the results screen stops the
 video, and hiding the browser tab pauses it without losing playback position.
 

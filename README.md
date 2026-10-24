@@ -45,9 +45,9 @@ remain useful.
 ## Victory celebration
 
 After the winner is determined, the results screen plays
-the existing six watercolor soldiers celebrating for five seconds (1280×720).
-`assets/video/victory-5s-silent.webm` (VP9) is the preferred source; browsers that
-do not support it use `assets/video/victory-5s-silent.mp4` (H.264). Both files have
+the six current HD soldiers celebrating for five seconds (1280×720).
+`assets/video/victory-hd.webm` (VP9) is the preferred source; browsers that
+do not support it use `assets/video/victory-hd.mp4` (H.264). Both files have
 no audio track. This keeps the GIF-like animation smaller and avoids audio-based
 autoplay restrictions. The winner's name and army remain visible above it.
 Playback is muted and inline, plays once, and loads only when needed.
@@ -75,3 +75,19 @@ is kept only in memory for the current entry; nothing is sent to a server.
 Edit `learning-data.js` to adjust either bank. `learning-core.js` holds the
 session rules; `learning.js` and `learning.css` implement the watercolor screens.
 The gate is a browser-local learning flow, not a server-enforced access control.
+
+## Character rendering
+
+All six current sprites are transparent 1024×1536 WebP files (`assets/sprites/*-hd.webp`),
+faithfully redrawn from the previous character references using the built-in image generator.
+The prompt preserves identity, pose, weapons, colors and silhouette, requesting crisp ink
+outlines, restrained painted shading, no surrounding shadow, and a transparent background.
+The same files supply the title, identity cards, quiz companion, army lists, arena and winner.
+`python scripts/render_victory.py` (Pillow, NumPy and FFmpeg) regenerates the silent
+WebM/MP4 celebration and poster from these sprites.
+
+Character images use normal smooth browser scaling and no CSS blur/drop-shadow.
+The arena supports device density up to 3×, restores high-quality smoothing after
+backing-store changes, watches layout/density changes, and preserves active poses
+on resize. Rotated sprite bounds are constrained to the arena, including fallen kings.
+Run `node --test tests/*.test.cjs` for audio, learning, video and rendering regression checks.

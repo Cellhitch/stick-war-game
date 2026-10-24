@@ -217,6 +217,49 @@
     font-size: 1.4rem; font-weight: 800; color: var(--gold);
     text-shadow: 1px 1px 0 var(--ink);
   }
+  .victory-king {
+    display: block;
+    width: min(200px, 58vw);
+    height: auto;
+    margin: 4px auto 8px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 4px rgba(108, 84, 54, 0.12));
+  }
+  .origin-drawing {
+    margin: 0 0 16px;
+    padding: 10px 10px 8px;
+    background: #fffdf8;
+    border: 1.5px solid #d4c5a7;
+    border-radius: 16px;
+    text-align: center;
+  }
+  .origin-drawing img {
+    display: block;
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+    margin: 0 auto;
+    border-radius: 12px;
+    object-fit: contain;
+  }
+  .origin-drawing figcaption {
+    margin-top: 8px;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #6e6554;
+  }
+  .skill-legend {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed #d8ceb7;
+  }
+  .skill-legend p {
+    font-weight: 800;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .skill-legend ul { padding-left: 1.3em; line-height: 1.7; font-size: 0.95rem; }
+  .skill-legend li { margin-bottom: 4px; }
 
   .shake { animation: shake 0.35s ease; }
   @keyframes shake {
@@ -329,14 +372,27 @@
 <section id="rules-screen" class="screen">
   <div class="card">
     <h2>📜 对战规则</h2>
+    <figure class="origin-drawing">
+      <img src="assets/original-drawing.jpg" width="1400" height="1866" alt="弟弟画的火柴人大战手稿：纸上的国王、士兵和飞艇">
+      <figcaption>灵感来自弟弟的手绘图，谢谢弟弟！这就是纸上王国的起点。</figcaption>
+    </figure>
     <ol>
-      <li>站得最高的兵是<strong>大王</strong>，最强但也最后出战。</li>
-      <li>双方每次各派出 <strong>1 名士兵</strong>，进入 1v1 决斗。</li>
-      <li>决斗为<strong>回合制</strong>：双方各自<strong>手动点选</strong>招数后，播放对打动画再结算；不会自动出招。</li>
-      <li>败者退场，胜者可继续出战；普通士兵尽墨后进入<strong>大王决胜</strong>！</li>
-      <li>最后倒下的大王所属阵营，输掉整场战争。</li>
+      <li>站得最高、最后出战的是<strong>大王</strong>：蓝方「金盔大王」、红方「裂盾大王」。大王要等其他士兵都退场后才上场。</li>
+      <li>双方每次各派出 <strong>1 名士兵</strong>，1 对 1 决斗。败者退场，胜者可以留下继续打下一场。</li>
+      <li>决斗是<strong>回合制</strong>：每回合双方都先<strong>亲手点招</strong>，再播放对打动画结算。人类玩家不会自动连招。</li>
+      <li>两种玩法：<strong>双人轮流</strong>（两人同屏，两边都要点招）和<strong>单人 vs 电脑</strong>（你点自己的招；电脑这边会稍停一下再自动选招）。</li>
+      <li>士兵有：矛兵、剑士、尖矛卫（蓝）／长矛卫（红）、阔剑卫，再加上大王。红方血量和攻击略高一点。</li>
+      <li>打倒对方全部士兵（包括大王）的一方获胜。</li>
     </ol>
-    <p style="margin-top:12px;text-align:center;opacity:0.7;font-size:0.9rem;">灵感来自一张手绘火柴人战争涂鸦 ✎</p>
+    <div class="skill-legend">
+      <p>四招小抄</p>
+      <ul>
+        <li><strong>猛攻</strong>：造成攻击伤害。</li>
+        <li><strong>格挡</strong>：本回合大幅减伤。</li>
+        <li><strong>蓄力</strong>：下一次猛攻大大加强。</li>
+        <li><strong>特技</strong>：破防一击，自己也会稍微掉血。</li>
+      </ul>
+    </div>
   </div>
   <div class="btn-row" style="margin-top:16px;">
     <button class="primary" id="btnRulesOk">知道了，开战！</button>
@@ -445,7 +501,7 @@
   <h2 id="victoryTitle">大战结束！</h2>
   <p class="winner-name" id="winnerName"></p>
   <p id="winnerSide" style="opacity:0.8;margin-top:4px;"></p>
-  <div id="victorySvg" style="width:160px;margin:12px auto;"></div>
+  <img id="victoryKing" class="victory-king" alt="" width="200" height="260">
   <div class="btn-row">
     <button class="primary" id="btnReplay">再来一局</button>
     <button id="btnToTitle">回标题</button>
@@ -1981,19 +2037,13 @@ function endWar() {
   document.getElementById('winnerSide').textContent =
     winSide === 'blue' ? '🛡 左军 · 蓝方 荣光加身！' : '⚔️ 右军 · 红方 荣光加身！';
 
-  const color = winSide === 'blue' ? '#3a6ea5' : '#c44536';
-  document.getElementById('victorySvg').innerHTML = `
-    <svg viewBox="0 0 80 100" width="120">
-      <circle cx="40" cy="22" r="14" fill="none" stroke="${color}" stroke-width="3"/>
-      <line x1="35" y1="19" x2="35" y2="25" stroke="${color}" stroke-width="2.5"/>
-      <line x1="45" y1="19" x2="45" y2="25" stroke="${color}" stroke-width="2.5"/>
-      <line x1="40" y1="36" x2="40" y2="68" stroke="${color}" stroke-width="3"/>
-      <line x1="40" y1="48" x2="22" y2="58" stroke="${color}" stroke-width="2.5"/>
-      <line x1="40" y1="48" x2="58" y2="58" stroke="${color}" stroke-width="2.5"/>
-      <line x1="40" y1="68" x2="28" y2="88" stroke="${color}" stroke-width="2.5"/>
-      <line x1="40" y1="68" x2="52" y2="88" stroke="${color}" stroke-width="2.5"/>
-      <text x="40" y="14" text-anchor="middle" font-size="12">👑</text>
-    </svg>`;
+  const kingArt = document.getElementById('victoryKing');
+  const kingName = winKing ? winKing.name : (winSide === 'blue' ? '金盔大王' : '裂盾大王');
+  kingArt.src = winSide === 'blue'
+    ? 'assets/sprites/blue_king.png'
+    : 'assets/sprites/red_king.png';
+  kingArt.alt = kingName;
+  kingArt.style.transform = winSide === 'red' ? 'scaleX(-1)' : 'none';
 
   showScreen('victory-screen');
 }

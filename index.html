@@ -463,7 +463,7 @@
     <ol>
       <li>站得最高的兵是<strong>大王</strong>，最强但也最后出战。</li>
       <li>双方每次各派出 <strong>1 名士兵</strong>，进入 1v1 决斗。</li>
-      <li>决斗为<strong>回合制</strong>：每回合必须<strong>手动点选</strong>招数（猛攻 / 格挡 / 蓄力 / 特技），不会自动出招。</li>
+      <li>决斗为<strong>回合制</strong>：双方各自<strong>手动点选</strong>招数后，播放对打动画再结算；不会自动出招。</li>
       <li>败者退场，胜者可继续出战；普通士兵尽墨后进入<strong>大王决胜</strong>！</li>
       <li>最后倒下的大王所属阵营，输掉整场战争。</li>
     </ol>
@@ -618,6 +618,14 @@ let state = {
   turnSide: null,
   charge: { blue: false, red: false },
   guard: { blue: false, red: false },
+  pendingMove: { blue: null, red: null },
+  animating: false,
+  arenaPose: {
+    L: { pose: 'idle', ox: 0, flash: 0 },
+    R: { pose: 'idle', ox: 0, flash: 0 },
+    spark: 0,
+    banner: '',
+  },
   _moveResolve: null,
   _aiTimer: null,
 };
@@ -633,6 +641,14 @@ function cloneRoster() {
   state.turnSide = null;
   state.charge = { blue: false, red: false };
   state.guard = { blue: false, red: false };
+  state.pendingMove = { blue: null, red: null };
+  state.animating = false;
+  state.arenaPose = {
+    L: { pose: 'idle', ox: 0, flash: 0 },
+    R: { pose: 'idle', ox: 0, flash: 0 },
+    spark: 0,
+    banner: '',
+  };
   state.skipAnim = false;
   clearAiTimer();
   state._moveResolve = null;
@@ -944,34 +960,142 @@ function drawWeapon(hx, hy, facing, type, pose) {
 }
 
 function clearArena() {
+  // deprecated alias — always draw fixed battlefield
+  drawFixedBattlefield();
+}
+
+/** 固定不变的涂鸦战场背景（位置由宽高推导，无随机） */
+function drawFixedBattlefield() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   ctx.clearRect(0, 0, w, h);
-  // paper texture feel
-  ctx.fillStyle = 'rgba(0,0,0,0.02)';
-  for (let i = 0; i < 20; i++) {
-    ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
-  }
-  // ground
+
+  // sky wash
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#e8e0d0');
+  grad.addColorStop(0.55, '#f5f0e6');
+  grad.addColorStop(1, '#d4cbb8');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
   ctx.strokeStyle = '#1a1a1a';
+  ctx.fillStyle = '#1a1a1a';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // sun (top-center doodle)
+  ctx.lineWidth = 2.5;
+  const sx = w * 0.5, sy = h * 0.16;
+  ctx.beginPath();
+  ctx.arc(sx, sy, 14, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(sx + Math.cos(a) * 18, sy + Math.sin(a) * 18);
+    ctx.lineTo(sx + Math.cos(a) * 26, sy + Math.sin(a) * 26);
+    ctx.stroke();
+  }
+
+  // distant hills
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.52);
+  ctx.quadraticCurveTo(w * 0.18, h * 0.38, w * 0.36, h * 0.5);
+  ctx.quadraticCurveTo(w * 0.5, h * 0.58, w * 0.64, h * 0.48);
+  ctx.quadraticCurveTo(w * 0.82, h * 0.36, w, h * 0.5);
+  ctx.stroke();
+
+  // cloud doodles (fixed)
+  drawCloud(w * 0.18, h * 0.2, 1);
+  drawCloud(w * 0.78, h * 0.18, 0.85);
+
+  // side banners / tents
+  drawBanner(w * 0.08, h * 0.42, '#3a6ea5');
+  drawBanner(w * 0.92, h * 0.42, '#c44536');
+
+  // ground lines (fixed wavy)
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(10, h - 28);
-  ctx.quadraticCurveTo(w * 0.3, h - 36, w * 0.5, h - 26);
-  ctx.quadraticCurveTo(w * 0.75, h - 20, w - 10, h - 30);
+  ctx.moveTo(8, h - 30);
+  ctx.quadraticCurveTo(w * 0.25, h - 40, w * 0.5, h - 28);
+  ctx.quadraticCurveTo(w * 0.75, h - 18, w - 8, h - 32);
   ctx.stroke();
+  ctx.lineWidth = 1.8;
+  ctx.globalAlpha = 0.45;
+  ctx.beginPath();
+  ctx.moveTo(16, h - 18);
+  ctx.quadraticCurveTo(w * 0.4, h - 12, w * 0.7, h - 20);
+  ctx.quadraticCurveTo(w * 0.85, h - 24, w - 20, h - 16);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // grass tufts (deterministic)
+  ctx.lineWidth = 2;
+  const tufts = [0.12, 0.22, 0.35, 0.48, 0.55, 0.68, 0.8, 0.9];
+  tufts.forEach((t, i) => {
+    const x = w * t;
+    const y = h - 34 + (i % 3) * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - 3, y - 8);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 4, y - 9);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 1, y - 6);
+    ctx.stroke();
+  });
+
+  // paper flecks — fixed grid, not random
+  ctx.fillStyle = 'rgba(0,0,0,0.035)';
+  for (let i = 0; i < 12; i++) {
+    const x = ((i * 97) % 100) / 100 * w;
+    const y = ((i * 53) % 100) / 100 * (h * 0.7);
+    ctx.fillRect(x, y, 2, 2);
+  }
+}
+
+function drawCloud(x, y, s) {
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, 8 * s, 0, Math.PI * 2);
+  ctx.arc(x + 10 * s, y - 3 * s, 10 * s, 0, Math.PI * 2);
+  ctx.arc(x + 20 * s, y, 7 * s, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawBanner(x, y, color) {
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 36);
+  ctx.lineTo(x, y + 20);
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 34);
+  ctx.lineTo(x + (x < canvas.clientWidth / 2 ? 22 : -22), y - 26);
+  ctx.lineTo(x, y - 18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#1a1a1a';
 }
 
 /* ========== 观战小猫咪（涂鸦风） ========== */
 const cats = [
-  { side: 'left', xRatio: 0.06, bob: 0, meowUntil: 0, nextMeow: 0, scale: 1 },
-  { side: 'left', xRatio: 0.13, bob: 1.2, meowUntil: 0, nextMeow: 0, scale: 0.85 },
-  { side: 'right', xRatio: 0.87, bob: 0.6, meowUntil: 0, nextMeow: 0, scale: 0.9 },
-  { side: 'right', xRatio: 0.94, bob: 1.8, meowUntil: 0, nextMeow: 0, scale: 1.05 },
+  { side: 'left', xRatio: 0.055, bob: 0, meowUntil: 0, nextMeow: 0, scale: 1, tail: 0 },
+  { side: 'left', xRatio: 0.125, bob: 1.2, meowUntil: 0, nextMeow: 0, scale: 0.85, tail: 1 },
+  { side: 'right', xRatio: 0.875, bob: 0.6, meowUntil: 0, nextMeow: 0, scale: 0.9, tail: 2 },
+  { side: 'right', xRatio: 0.945, bob: 1.8, meowUntil: 0, nextMeow: 0, scale: 1.05, tail: 0.5 },
 ];
 let catAnimId = null;
 let catLastTs = 0;
 
-function drawDoodleCat(x, y, facing, scale, meowing) {
+function drawDoodleCat(x, y, facing, scale, meowing, now, tailPhase) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(facing * scale, scale);
@@ -980,26 +1104,21 @@ function drawDoodleCat(x, y, facing, scale, meowing) {
   ctx.lineWidth = 2.2;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  // body
   ctx.beginPath();
   ctx.ellipse(0, 0, 12, 9, 0, 0, Math.PI * 2);
   ctx.stroke();
-  // head
   ctx.beginPath();
   ctx.arc(14, -10, 8, 0, Math.PI * 2);
   ctx.stroke();
-  // ears (triangles)
   ctx.beginPath();
   ctx.moveTo(8, -15); ctx.lineTo(10, -24); ctx.lineTo(14, -16);
   ctx.moveTo(16, -16); ctx.lineTo(20, -25); ctx.lineTo(22, -15);
   ctx.stroke();
-  // eyes
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(12, -11); ctx.lineTo(12, -8);
   ctx.moveTo(17, -11); ctx.lineTo(17, -8);
   ctx.stroke();
-  // whiskers
   ctx.lineWidth = 1.3;
   ctx.beginPath();
   ctx.moveTo(20, -8); ctx.lineTo(28, -10);
@@ -1007,26 +1126,27 @@ function drawDoodleCat(x, y, facing, scale, meowing) {
   ctx.moveTo(8, -8); ctx.lineTo(1, -10);
   ctx.moveTo(8, -6); ctx.lineTo(1, -5);
   ctx.stroke();
-  // tail
+  // wagging tail
+  const wag = Math.sin(now / 280 + tailPhase) * 8;
   ctx.lineWidth = 2.2;
   ctx.beginPath();
   ctx.moveTo(-12, -2);
-  ctx.quadraticCurveTo(-22, -14, -18, -22);
+  ctx.quadraticCurveTo(-22, -14 + wag * 0.3, -18 + wag * 0.15, -22);
   ctx.stroke();
-  // paws
+  // paw tap
+  const paw = Math.sin(now / 320 + tailPhase) > 0.6 ? 2 : 0;
   ctx.beginPath();
-  ctx.moveTo(-6, 8); ctx.lineTo(-6, 14);
+  ctx.moveTo(-6, 8); ctx.lineTo(-6, 14 - paw);
   ctx.moveTo(4, 8); ctx.lineTo(4, 14);
   ctx.stroke();
   if (meowing) {
     ctx.save();
-    ctx.scale(facing, 1); // keep bubble readable
+    ctx.scale(facing, 1);
     const bx = facing > 0 ? 28 : -28;
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.ellipse(bx, -28, 14, 9, 0, 0, Math.PI * 2);
     ctx.stroke();
-    // tiny tail of bubble
     ctx.beginPath();
     ctx.moveTo(bx - facing * 6, -20);
     ctx.lineTo(bx - facing * 2, -14);
@@ -1042,40 +1162,108 @@ function drawDoodleCat(x, y, facing, scale, meowing) {
 
 function drawSpectatorCats(now) {
   const w = canvas.clientWidth, h = canvas.clientHeight;
-  const groundY = h - 40;
+  const groundY = h - 38;
   cats.forEach((c, i) => {
-    if (!c.nextMeow) c.nextMeow = now + 2500 + Math.random() * 6000 + i * 800;
+    if (!c.nextMeow) c.nextMeow = now + 2500 + (i * 1700) % 5000;
     if (now >= c.nextMeow && now > c.meowUntil) {
       c.meowUntil = now + 900;
-      c.nextMeow = now + 5000 + Math.random() * 9000;
+      c.nextMeow = now + 5500 + (i * 2300) % 8000;
       if (state.screen === 'battle' && !state.muted) sfxMeow();
     }
     const bobY = Math.sin(now / 450 + c.bob) * 2.5;
     const facing = c.side === 'left' ? 1 : -1;
-    const meowing = now < c.meowUntil;
-    drawDoodleCat(w * c.xRatio, groundY + bobY, facing, c.scale, meowing);
+    drawDoodleCat(w * c.xRatio, groundY + bobY, facing, c.scale, now < c.meowUntil, now, c.tail);
   });
 }
 
-function drawArenaScene(extraDraw) {
+function resetArenaPoses() {
+  state.arenaPose.L = { pose: 'idle', ox: 0, flash: 0 };
+  state.arenaPose.R = { pose: 'idle', ox: 0, flash: 0 };
+  state.arenaPose.spark = 0;
+  state.arenaPose.banner = '';
+}
+
+function drawArenaFrame() {
   if (state.screen !== 'battle') return;
-  clearArena();
+  drawFixedBattlefield();
   const w = canvas.clientWidth, h = canvas.clientHeight;
   const groundY = h - 56;
-  drawSpectatorCats(performance.now());
-  if (extraDraw) extraDraw(w, h, groundY);
-  else {
-    if (state.fighterL) {
-      drawStick(w * 0.28, groundY, 1, state.fighterL.weaponType, '#3a6ea5', 'idle');
+  const now = performance.now();
+  drawSpectatorCats(now);
+
+  const ap = state.arenaPose;
+  if (state.fighterL) {
+    if (ap.L.flash > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.55, ap.L.flash);
+      ctx.fillStyle = '#fff8dc';
+      ctx.beginPath();
+      ctx.arc(w * 0.28 + ap.L.ox, groundY - 30, 36, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
-    if (state.fighterR) {
-      drawStick(w * 0.72, groundY, -1, state.fighterR.weaponType, '#c44536', 'idle');
+    drawStick(w * 0.28 + ap.L.ox, groundY, 1, state.fighterL.weaponType, '#3a6ea5', ap.L.pose);
+  }
+  if (state.fighterR) {
+    if (ap.R.flash > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.55, ap.R.flash);
+      ctx.fillStyle = '#fff8dc';
+      ctx.beginPath();
+      ctx.arc(w * 0.72 + ap.R.ox, groundY - 30, 36, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
+    drawStick(w * 0.72 + ap.R.ox, groundY, -1, state.fighterR.weaponType, '#c44536', ap.R.pose);
+  }
+
+  // center clash spark
+  if (ap.spark > 0) {
+    const cx = w * 0.5, cy = groundY - 28;
+    ctx.save();
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    ctx.globalAlpha = Math.min(1, ap.spark);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + now / 200;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(a) * (10 + ap.spark * 12), cy + Math.sin(a) * (10 + ap.spark * 12));
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6 + ap.spark * 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (ap.banner) {
+    ctx.save();
+    ctx.font = 'bold 16px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillText(ap.banner, w * 0.5, 28);
+    ctx.restore();
   }
 }
 
+function drawArenaScene(extraDraw) {
+  // legacy hook: if callback provided, temporarily use it after bg+cats
+  if (state.screen !== 'battle') return;
+  if (!extraDraw) {
+    drawArenaFrame();
+    return;
+  }
+  drawFixedBattlefield();
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const groundY = h - 56;
+  drawSpectatorCats(performance.now());
+  extraDraw(w, h, groundY);
+}
+
 function drawArenaIdle() {
-  drawArenaScene(null);
+  resetArenaPoses();
+  drawArenaFrame();
 }
 
 function ensureCatLoop() {
@@ -1083,17 +1271,15 @@ function ensureCatLoop() {
   const tick = (ts) => {
     catAnimId = requestAnimationFrame(tick);
     if (state.screen !== 'battle') return;
-    // Soft refresh ~8fps when idle so cats bob / meow without fighting strike anims
-    if (state.battling && state.turnSide && document.getElementById('skillPanel').classList.contains('visible')) {
-      if (!catLastTs || ts - catLastTs > 120) {
-        catLastTs = ts;
-        drawArenaIdle();
-      }
-    } else if (!state.battling) {
-      if (!catLastTs || ts - catLastTs > 140) {
-        catLastTs = ts;
-        drawArenaIdle();
-      }
+    // Always keep cats/background alive during duel (including clash anim frames)
+    if (!catLastTs || ts - catLastTs > 50) {
+      catLastTs = ts;
+      // decay flashes gently between anim keyframes
+      const ap = state.arenaPose;
+      if (ap.L.flash > 0) ap.L.flash = Math.max(0, ap.L.flash - 0.08);
+      if (ap.R.flash > 0) ap.R.flash = Math.max(0, ap.R.flash - 0.08);
+      if (ap.spark > 0) ap.spark = Math.max(0, ap.spark - 0.1);
+      drawArenaFrame();
     }
   };
   catAnimId = requestAnimationFrame(tick);
@@ -1228,10 +1414,12 @@ function showSkillPanel(side) {
   const human = isHumanSide(side);
   // 人类回合：按钮可点；AI 回合：禁用，绝不响应点击
   btns.querySelectorAll('button').forEach(b => { b.disabled = !human; });
+  const otherPicked = side === 'blue' ? state.pendingMove.red : state.pendingMove.blue;
+  const phase = state.pendingMove.blue || state.pendingMove.red ? '（本回合第2次选招）' : '（本回合第1次选招）';
   if (state.mode === 'hotseat') {
-    label.textContent = `${name}回合 · ${who} 请点选招数`;
+    label.textContent = `${name}选招 · ${who} ${phase}`;
   } else if (human) {
-    label.textContent = `你的回合 · ${who} 请点选招数`;
+    label.textContent = `你的选招 · ${who} ${phase}`;
   } else {
     label.textContent = `电脑思考中 · ${who}…`;
   }
@@ -1348,33 +1536,50 @@ async function startDuel() {
   state.pickSide = null;
   state.charge = { blue: false, red: false };
   state.guard = { blue: false, red: false };
+  state.pendingMove = { blue: null, red: null };
+  resetArenaPoses();
   renderLists();
   hideSkillPanel();
 
   if (L.isKing && R.isKing) {
     setVs(`👑 ${L.name}  VS  ${R.name} 👑`);
-    log(`<span class="king-msg">🔥 大王对决：${L.name} vs ${R.name}！轮流出招！</span>`, 'king-msg');
+    log(`<span class="king-msg">🔥 大王对决：${L.name} vs ${R.name}！双方选招后开战！</span>`, 'king-msg');
   } else {
     setVs(`${L.name}  VS  ${R.name}`);
-    log(`⚔️ 决斗开始：轮流选择招数！`);
+    log(`⚔️ 决斗开始：双方各自选好招数后，播放对打动画！`);
   }
-
-  // Blue goes first each duel
-  let turn = 'blue';
+  drawArenaFrame();
 
   while (L.hp > 0 && R.hp > 0 && state.battling) {
-    state.turnSide = turn;
-    const move = await waitForMove(turn);
-    if (!state.battling || !move) break;
+    state.pendingMove = { blue: null, red: null };
 
-    await resolveMove(turn, move);
+    // 1) 双方依次选招（人类必须手点；不立刻结算）
+    const moveL = await waitForMove('blue');
+    if (!state.battling || !moveL) break;
+    state.pendingMove.blue = moveL;
+    log(`蓝方 <strong>${L.name}</strong> 已选定招数…`);
+    setVs(`${L.name} 已选招 · 等待红方`);
+
+    const moveR = await waitForMove('red');
+    if (!state.battling || !moveR) break;
+    state.pendingMove.red = moveR;
+    log(`红方 <strong>${R.name}</strong> 已选定招数…`);
+    setVs(`双方出招：${moveL} VS ${moveR}`);
+    log(`双方出招！蓝「${moveL}」· 红「${moveR}」——开打！`);
+
+    // 2) 播放对打动画，再结算伤害
+    await playExchangeAnimation(moveL, moveR);
+    if (!state.battling) break;
+    await resolveExchange(moveL, moveR);
+
     updateHpBars();
     renderLists();
-    drawArenaIdle();
+    resetArenaPoses();
+    drawArenaFrame();
 
     if (L.hp <= 0 || R.hp <= 0) break;
-    turn = turn === 'blue' ? 'red' : 'blue';
-    await sleep(state.skipAnim ? 60 : 220);
+    await sleep(state.skipAnim ? 80 : 380);
+    setVs(`${L.name}  VS  ${R.name}`);
   }
 
   hideSkillPanel();
@@ -1398,9 +1603,11 @@ async function startDuel() {
   }
 
   state.battling = false;
+  state.animating = false;
   state.turnSide = null;
   state.charge = { blue: false, red: false };
   state.guard = { blue: false, red: false };
+  state.pendingMove = { blue: null, red: null };
   updateHpBars();
   renderLists();
   drawArenaIdle();
@@ -1434,8 +1641,6 @@ function waitForMove(side) {
     state.turnSide = side;
     showSkillPanel(side);
 
-    // 仅 vsai 且当前是电脑阵营时，短暂停顿后由 AI 选招。
-    // 双人轮流 / 人类回合：绝对不设定时器，必须手动点按钮。
     if (state.mode === 'vsai' && !isHumanSide(side)) {
       const delay = state.skipAnim ? 280 : 700 + Math.random() * 500;
       state._aiTimer = setTimeout(() => {
@@ -1443,7 +1648,7 @@ function waitForMove(side) {
         if (state._moveResolve !== resolve) return;
         if (!state.battling) return;
         if (state.turnSide !== side) return;
-        if (isHumanSide(side)) return; // 双保险
+        if (isHumanSide(side)) return;
         const move = aiChooseMove(side);
         pickMove(move, true);
       }, delay);
@@ -1473,9 +1678,8 @@ function pickMove(moveName, fromAi) {
   if (!MOVES[moveName]) return;
   const side = state.turnSide;
   if (!side) return;
-  // 人类只能在自己回合手动点；AI 只能通过 fromAi 触发
   if (fromAi) {
-    if (isHumanSide(side)) return; // 禁止 AI 替人类出招
+    if (isHumanSide(side)) return;
     if (state.mode !== 'vsai') return;
   } else {
     if (!isHumanSide(side)) return;
@@ -1484,94 +1688,164 @@ function pickMove(moveName, fromAi) {
   clearAiTimer();
   const resolve = state._moveResolve;
   state._moveResolve = null;
-  ensureAudio(); // unlock audio on user gesture
+  ensureAudio();
   hideSkillPanel();
   sfxSelect();
   resolve(moveName);
 }
 
-async function resolveMove(side, move) {
-  const me = getFighter(side);
-  const foeSide = side === 'blue' ? 'red' : 'blue';
-  const foe = getFighter(foeSide);
-  if (!me || !foe) return;
+function poseForMove(move) {
+  if (move === '格挡') return 'hurt'; // shield-ish crouch
+  if (move === '蓄力') return 'windup';
+  return 'windup';
+}
 
-  const sideName = side === 'blue' ? '蓝方' : '红方';
-  log(`${sideName}<strong>${me.name}</strong> 使出「${move}」！`);
+async function setPoseFrame(opts) {
+  const ap = state.arenaPose;
+  if (opts.L) Object.assign(ap.L, opts.L);
+  if (opts.R) Object.assign(ap.R, opts.R);
+  if (opts.spark != null) ap.spark = opts.spark;
+  if (opts.banner != null) ap.banner = opts.banner;
+  drawArenaFrame();
+  await sleep(opts.ms != null ? opts.ms : (state.skipAnim ? 50 : 160));
+}
 
-  // Incoming guard only reduces damage this opponent's attack turn;
-  // Guard set last turn is consumed when hit. Fresh guard this turn protects until next foe attack.
-  if (move === '格挡') {
-    state.guard[side] = true;
-    log(`🛡 ${me.name} 进入格挡姿势，下一击伤害大幅减免！`);
-    await animateStrike(side, 'guard');
-    sfxBlock();
-    return;
+/** 双方选招后的对打动画：蓄势 → 冲刺对撞 → 受击/格挡闪光 */
+async function playExchangeAnimation(mL, mR) {
+  state.animating = true;
+  state.turnSide = null;
+  hideSkillPanel();
+  const Lattack = mL === '猛攻' || mL === '特技';
+  const Rattack = mR === '猛攻' || mR === '特技';
+  const bothDefend = mL === '格挡' && mR === '格挡';
+  const bothCharge = mL === '蓄力' && mR === '蓄力';
+
+  state.arenaPose.banner = `${mL}  ×  ${mR}`;
+
+  // 1. reveal / windup
+  await setPoseFrame({
+    L: { pose: poseForMove(mL), ox: Lattack ? 6 : 0, flash: 0 },
+    R: { pose: poseForMove(mR), ox: Rattack ? -6 : 0, flash: 0 },
+    spark: 0,
+    ms: state.skipAnim ? 60 : 280,
+  });
+
+  // 2. lunge
+  await setPoseFrame({
+    L: { pose: Lattack ? 'strike' : poseForMove(mL), ox: Lattack ? 28 : (mL === '格挡' ? -4 : 10), flash: 0 },
+    R: { pose: Rattack ? 'strike' : poseForMove(mR), ox: Rattack ? -28 : (mR === '格挡' ? 4 : -10), flash: 0 },
+    spark: (Lattack || Rattack) ? 0.4 : 0,
+    ms: state.skipAnim ? 60 : 200,
+  });
+
+  // 3. clash impact
+  const willClash = Lattack || Rattack || bothDefend;
+  if (willClash) {
+    canvas.classList.remove('shake');
+    void canvas.offsetWidth;
+    canvas.classList.add('shake');
+    if (bothDefend) sfxBlock();
+    else if ((Lattack && mR === '格挡') || (Rattack && mL === '格挡')) sfxClash();
+    else if (Lattack && Rattack) sfxClash();
+    else sfxHit();
+
+    await setPoseFrame({
+      L: {
+        pose: Rattack ? 'hurt' : (Lattack ? 'strike' : poseForMove(mL)),
+        ox: Lattack ? 34 : (mL === '格挡' ? -8 : 8),
+        flash: Rattack || (Lattack && mR === '格挡') ? 1 : 0.3,
+      },
+      R: {
+        pose: Lattack ? 'hurt' : (Rattack ? 'strike' : poseForMove(mR)),
+        ox: Rattack ? -34 : (mR === '格挡' ? 8 : -8),
+        flash: Lattack || (Rattack && mL === '格挡') ? 1 : 0.3,
+      },
+      spark: willClash ? 1.2 : 0,
+      ms: state.skipAnim ? 70 : 260,
+    });
+  } else if (bothCharge) {
+    await setPoseFrame({
+      L: { pose: 'windup', ox: 8, flash: 0.5 },
+      R: { pose: 'windup', ox: -8, flash: 0.5 },
+      spark: 0.3,
+      ms: state.skipAnim ? 60 : 240,
+    });
+    sfxSelect();
+  } else {
+    // one charges, other charges/guards without clash
+    await setPoseFrame({
+      L: { pose: poseForMove(mL), ox: 8, flash: mL === '蓄力' ? 0.5 : 0 },
+      R: { pose: poseForMove(mR), ox: -8, flash: mR === '蓄力' ? 0.5 : 0 },
+      spark: 0,
+      ms: state.skipAnim ? 60 : 220,
+    });
   }
 
-  if (move === '蓄力') {
-    state.charge[side] = true;
-    log(`⚡ ${me.name} 蓄力！下一次猛攻威力大增！`);
-    await animateStrike(side, 'windup');
-    return;
+  // 4. settle
+  await setPoseFrame({
+    L: { pose: 'idle', ox: 0, flash: 0 },
+    R: { pose: 'idle', ox: 0, flash: 0 },
+    spark: 0,
+    banner: '',
+    ms: state.skipAnim ? 40 : 180,
+  });
+  state.animating = false;
+}
+
+async function resolveExchange(mL, mR) {
+  const L = state.fighterL, R = state.fighterR;
+  if (!L || !R) return;
+
+  let chargeL = state.charge.blue;
+  let chargeR = state.charge.red;
+  const nextCharge = { blue: mL === '蓄力', red: mR === '蓄力' };
+
+  if (mL === '格挡') log(`🛡 ${L.name} 格挡！`);
+  if (mR === '格挡') log(`🛡 ${R.name} 格挡！`);
+  if (mL === '蓄力') log(`⚡ ${L.name} 蓄力，下一回合猛攻增强！`);
+  if (mR === '蓄力') log(`⚡ ${R.name} 蓄力，下一回合猛攻增强！`);
+
+  function previewAttack(atkSide, move, charged, foeMove) {
+    const me = getFighter(atkSide);
+    const foe = getFighter(atkSide === 'blue' ? 'red' : 'blue');
+    let mult = move === '特技' ? 1.35 : 1;
+    let pierce = move === '特技';
+    let selfDmg = move === '特技' ? Math.max(4, Math.round(me.atk * 0.12)) : 0;
+    if (charged) mult *= move === '特技' ? 1.15 : 1.85;
+    let dmg = calcDamage(me, foe, mult, pierce);
+    let blocked = foeMove === '格挡';
+    if (blocked) dmg = Math.max(1, Math.round(dmg * (pierce ? 0.55 : 0.35)));
+    return { me, foe, dmg, blocked, selfDmg, charged, move };
   }
 
-  // Offensive moves: 猛攻 / 特技 — clear own guard (you attack, not blocking)
-  state.guard[side] = false;
+  const hits = [];
+  if (mL === '猛攻' || mL === '特技') hits.push(previewAttack('blue', mL, chargeL, mR));
+  if (mR === '猛攻' || mR === '特技') hits.push(previewAttack('red', mR, chargeR, mL));
 
-  let mult = 1;
-  let selfDmg = 0;
-  let pierce = false;
-
-  if (move === '猛攻') {
-    mult = 1;
-    if (state.charge[side]) {
-      mult = 1.85;
-      state.charge[side] = false;
-      log(`💥 蓄力爆发！`);
+  // Apply all planned hits (simultaneous fairness)
+  for (const h of hits) {
+    if (h.charged) log(`💥 ${h.me.name} 蓄力爆发！`);
+    if (h.blocked) log(`🛡 ${h.foe.name} 格挡生效，伤害减免至 <span class="dmg">${h.dmg}</span>`);
+    h.foe.hp = Math.max(0, h.foe.hp - h.dmg);
+    log(`${h.me.name}「${h.move}」打中 ${h.foe.name}，造成 <span class="dmg">${h.dmg}</span> 伤害！`);
+    if (h.selfDmg > 0 && h.me.hp > 0) {
+      h.me.hp = Math.max(1, h.me.hp - h.selfDmg);
+      log(`特技反噬：${h.me.name} 自损 <span class="dmg">${h.selfDmg}</span>`);
     }
-  } else if (move === '特技') {
-    mult = 1.35;
-    pierce = true; // ignore part of guard & king reduction
-    selfDmg = Math.max(4, Math.round(me.atk * 0.12));
-    if (state.charge[side]) {
-      mult = 1.55;
-      state.charge[side] = false;
-      log(`💥 蓄力特技！`);
-    }
+    if (h.me === L) state.arenaPose.R.flash = 0.9;
+    else state.arenaPose.L.flash = 0.9;
+    drawArenaFrame();
+    updateHpBars();
+    await sleep(state.skipAnim ? 40 : 140);
   }
 
-  await animateStrike(side, 'strike');
-  if (!state.battling) return;
-
-  let dmg = calcDamage(me, foe, mult, pierce);
-
-  // Apply foe guard
-  let blocked = false;
-  if (state.guard[foeSide]) {
-    const reduced = Math.max(1, Math.round(dmg * (pierce ? 0.55 : 0.35)));
-    log(`🛡 ${foe.name} 格挡生效：${dmg} → <span class="dmg">${reduced}</span>`);
-    dmg = reduced;
-    state.guard[foeSide] = false;
-    blocked = true;
-  }
-
-  foe.hp = Math.max(0, foe.hp - dmg);
-  log(`${me.name} 对 ${foe.name} 造成 <span class="dmg">${dmg}</span> 伤害！`);
-  if (blocked) sfxClash();
-  else sfxHit();
-
-  if (selfDmg > 0 && me.hp > 0) {
-    me.hp = Math.max(1, me.hp - selfDmg); // don't suicide via special unless already dying from foe
-    if (foe.hp <= 0) {
-      // ok
-    }
-    log(`特技反噬：${me.name} 自损 <span class="dmg">${selfDmg}</span>`);
-  }
+  state.charge = nextCharge;
+  state.guard = { blue: false, red: false };
+  updateHpBars();
 }
 
 function calcDamage(atk, def, mult = 1, pierce = false) {
-  const variance = 0.8 + Math.random() * 0.4; // 0.8–1.2
+  const variance = 0.8 + Math.random() * 0.4;
   let dmg = Math.round(atk.atk * variance * mult);
   if (def.isKing && !pierce) dmg = Math.round(dmg * 0.92);
   if (Math.random() < 0.1) {
@@ -1587,47 +1861,40 @@ function sleep(ms) {
 }
 
 async function animateStrike(side, kind) {
-  let poses;
-  if (kind === 'guard') poses = state.skipAnim ? ['idle'] : ['idle', 'hurt', 'idle'];
-  else if (kind === 'windup') poses = state.skipAnim ? ['windup'] : ['windup', 'windup', 'idle'];
-  else poses = state.skipAnim ? ['strike'] : ['windup', 'strike', 'idle'];
-
-  for (const pose of poses) {
-    drawArenaScene((w, h, groundY) => {
-      if (state.fighterL) {
-        const ox = side === 'blue' && pose === 'strike' ? 18 : 0;
-        const p = side === 'blue' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
-        drawStick(w * 0.28 + ox, groundY, 1, state.fighterL.weaponType, '#3a6ea5', p);
-      }
-      if (state.fighterR) {
-        const ox = side === 'red' && pose === 'strike' ? -18 : 0;
-        const p = side === 'red' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
-        drawStick(w * 0.72 + ox, groundY, -1, state.fighterR.weaponType, '#c44536', p);
-      }
+  // kept for compatibility — maps to pose frames
+  const isBlue = side === 'blue';
+  if (kind === 'guard') {
+    await setPoseFrame({
+      L: isBlue ? { pose: 'hurt', ox: -4 } : undefined,
+      R: !isBlue ? { pose: 'hurt', ox: 4 } : undefined,
+      ms: 160,
     });
-    if (pose === 'strike') {
-      canvas.classList.remove('shake');
-      void canvas.offsetWidth;
-      canvas.classList.add('shake');
-    }
-    await sleep(pose === 'strike' ? 180 : 140);
+  } else if (kind === 'windup') {
+    await setPoseFrame({
+      L: isBlue ? { pose: 'windup', ox: 6 } : undefined,
+      R: !isBlue ? { pose: 'windup', ox: -6 } : undefined,
+      ms: 160,
+    });
+  } else {
+    await setPoseFrame({
+      L: isBlue ? { pose: 'strike', ox: 28, flash: 0.4 } : { pose: 'hurt', flash: 0.8 },
+      R: !isBlue ? { pose: 'strike', ox: -28, flash: 0.4 } : { pose: 'hurt', flash: 0.8 },
+      spark: 1,
+      ms: 200,
+    });
   }
-  drawArenaIdle();
+  resetArenaPoses();
+  drawArenaFrame();
 }
 
 async function animateDeath(who) {
-  for (let i = 0; i < (state.skipAnim ? 1 : 4); i++) {
-    drawArenaScene((w, h, groundY) => {
-      if (state.fighterL) {
-        drawStick(w * 0.28, groundY, 1, state.fighterL.weaponType, '#3a6ea5',
-          (who === 'blue' || who === 'both') ? 'dead' : 'idle');
-      }
-      if (state.fighterR) {
-        drawStick(w * 0.72, groundY, -1, state.fighterR.weaponType, '#c44536',
-          (who === 'red' || who === 'both') ? 'dead' : 'idle');
-      }
-    });
-    await sleep(120);
+  for (let i = 0; i < (state.skipAnim ? 1 : 5); i++) {
+    state.arenaPose.L.pose = (who === 'blue' || who === 'both') ? 'dead' : 'idle';
+    state.arenaPose.R.pose = (who === 'red' || who === 'both') ? 'dead' : 'idle';
+    state.arenaPose.L.ox = 0;
+    state.arenaPose.R.ox = 0;
+    drawArenaFrame();
+    await sleep(140);
   }
 }
 

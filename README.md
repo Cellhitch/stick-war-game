@@ -29,6 +29,7 @@ python scripts/compose_music.py
 ```sh
 node --check audio.js
 node --test tests/audio.test.cjs
+node --test tests/victory.test.cjs
 ```
 
 The audio lifecycle tests cover repeated start requests, leaving during loading,
@@ -38,3 +39,14 @@ remain useful.
 
 `style.css` contains presentation overrides. Game rules and combat remain in
 `index.html`. No bundler or framework is required.
+
+## Victory celebration
+
+After the winner is determined, the results screen plays
+`assets/video/victory-5s.mp4` once: the existing six watercolor soldiers celebrate
+for five seconds (1280×720, H.264/AAC). The winner's name and army remain visible
+above the video. Playback starts muted for mobile autoplay compatibility; the
+player can enable its soundtrack with the video sound button. Its level follows
+the music slider and global mute. Replay and navigation remain available if
+playback is blocked or the video fails. Leaving the results screen stops the
+video, and hiding the browser tab pauses it without losing playback position.

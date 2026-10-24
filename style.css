@@ -1,0 +1,95 @@
+/* Warm paper, watercolor scenery and a compact, touch-friendly battle HUD. */
+:root{--ink:#373b37;--paper:#f5f0e5;--cream:#fffcf4;--gold:#b68b3d;--blue:#426e88;--red:#b45e4b;--shadow:rgba(73,57,30,.1)}
+body{background:radial-gradient(ellipse at 18% 5%,#e7eadb 0,transparent 48%),radial-gradient(ellipse at 90% 80%,#eadfc8 0,transparent 50%),var(--paper);background-attachment:fixed}
+.screen{max-width:1080px;padding:30px 24px;min-height:100svh}
+button,.btn,.mode-card,.side-card{border-width:1.5px;box-shadow:0 3px 0 rgba(67,55,31,.13);transition:transform .16s,box-shadow .16s,background .16s}
+button:hover:not(:disabled),.mode-card:hover,.side-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(67,55,31,.12)}
+button:focus-visible,summary:focus-visible,.mode-card:focus-visible,.side-card:focus-visible,input:focus-visible{outline:3px solid #b68b3d;outline-offset:4px}
+button.primary{background:#3d5c53;color:#fffbed;border-color:#3d5c53;padding:15px 38px}
+.eyebrow{font-size:.72rem;letter-spacing:.24em;color:#8c7752;font-weight:700}
+#title-screen{gap:14px;padding-top:74px;justify-content:center}
+#title-screen h1{font-family:'Songti SC','STSong',serif;font-size:clamp(2.8rem,7vw,4.8rem);letter-spacing:.12em;font-weight:900;color:#334a43;text-shadow:none;line-height:1.2}
+#title-screen h1 span{color:#ab7049}
+.subtitle{color:#7c7d6d;font-size:.95rem;letter-spacing:.09em}
+.hero-art{position:relative;isolation:isolate;width:min(100%,620px);height:310px;overflow:hidden;border-radius:50% 50% 24px 24px;background:linear-gradient(#e1e8df80,#f8f0d8);margin:10px 0 14px;border-bottom:1px solid #c7b78c}
+.hero-sun{position:absolute;left:43%;top:12%;width:86px;height:86px;border-radius:50%;background:#ead6a3;box-shadow:0 0 50px #eddbb8}
+.hero-hill{position:absolute;bottom:0;left:-10%;width:125%;border-radius:50% 60% 0 0;z-index:-1}
+.hill-back{height:48%;background:#c3cebb;transform:rotate(-8deg)}
+.hill-front{height:25%;background:#e2d4ae;transform:rotate(7deg)}
+.hero-unit{position:absolute;object-fit:contain;bottom:35px;filter:drop-shadow(0 8px 3px #6c54361b);max-width:34%}
+.hero-king-left{height:235px;left:8%;transform:rotate(-4deg)}
+.hero-king-right{height:250px;right:5%;transform:scaleX(-1) rotate(-3deg)}
+.hero-spear{height:155px;left:36%}.hero-sword{height:145px;right:28%;bottom:27px}
+.hero-caption{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:.7rem;color:#7d725a;letter-spacing:.2em}
+.audio-toolbar{position:fixed;right:18px;top:max(14px,env(safe-area-inset-top));z-index:100;display:flex;gap:8px;align-items:center}
+.mute-btn{position:static;width:40px;height:40px;font-size:1.2rem;background:#fffcf3e8;border:1px solid #c5b99e;box-shadow:0 3px 14px #4e3f2310}
+.audio-settings{position:relative;font-size:.75rem}
+.audio-settings summary{list-style:none;cursor:pointer;background:#fffcf3e8;border:1px solid #c5b99e;border-radius:24px;padding:11px 14px}
+.audio-settings summary::-webkit-details-marker{display:none}
+.audio-popover{position:absolute;right:0;top:48px;width:min(275px,calc(100vw - 36px));padding:22px;background:#fffcf6;border:1px solid #cdbf9d;border-radius:18px;box-shadow:0 12px 44px #4b3a2424;display:grid;gap:12px}
+.audio-popover strong{font-family:'Songti SC',serif;font-size:1.1rem;margin-bottom:4px}
+.audio-popover label{display:flex;justify-content:space-between;gap:12px}
+.audio-popover input{width:100%;accent-color:#557466;cursor:pointer;min-height:26px}
+#audioStatus{font-size:.7rem;color:#8a816d;line-height:1.6;border-top:1px solid #e7decd;padding-top:10px}
+.card{border:1px solid #d4c5a7;border-radius:22px;box-shadow:0 10px 40px #5e4d2410;padding:28px;max-width:560px}
+#side-screen,#rules-screen,#victory-screen{justify-content:center;gap:14px;padding-top:78px}
+.mode-cards{max-width:550px;gap:14px;margin-top:10px}
+.mode-card{border:1px solid #d1c5ae;border-radius:18px;padding:23px;background:#fffdf6}
+.mode-card.primary-mode{background:#eef0e5;border-color:#8b9a7d}
+.mode-card h3{font-size:1.05rem;color:#3d5448;margin-bottom:8px}.mode-card p{line-height:1.7;color:#727766}
+.side-card{border-radius:18px;max-width:260px;padding:22px;border-width:1px}
+#battle-screen{padding-top:72px;gap:12px}
+.battle-header{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:12px}
+.battle-header h2{font-family:'Songti SC','STSong',serif;font-size:1.9rem;letter-spacing:.12em;margin-top:5px;color:#3e5144}
+.battle-seal{font-size:.72rem;border:1px solid #cdbb92;padding:8px 12px;border-radius:30px;color:#8d7443;background:#fff9e9}
+.armies-row{gap:14px}
+.army-panel{min-width:0;min-height:0;border:1px solid #c9d3cc!important;border-radius:18px;padding:12px;background:#fffcf5b3}
+.army-panel.red{border-color:#decbbe!important}
+.army-panel h3{font-size:.8rem;letter-spacing:.07em;border-bottom:1px solid #d8d1be;padding-bottom:9px;margin-bottom:9px}
+#listBlue,#listRed{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.soldier-chip{width:100%;min-width:0;flex-direction:column;gap:5px;padding:6px 2px;border:1px solid transparent;border-radius:10px;margin:0;background:transparent;box-shadow:none;font-size:.7rem}
+.soldier-chip.blue,.soldier-chip.red{background:transparent;color:var(--ink)}
+.soldier-chip:disabled{opacity:1;color:var(--ink);box-shadow:none;cursor:default;transform:none}
+.soldier-chip .chip-sprite{height:58px;width:100%;max-width:64px}
+.soldier-chip .chip-name{min-width:0;max-width:100%;font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.soldier-chip .chip-badge{display:none}
+.soldier-chip.selectable{background:#fffef9;border:1px solid #c5c8ab;box-shadow:0 2px 0 #bcb18a40}
+.soldier-chip.selectable:hover{background:#f6edce}
+.soldier-chip.deployed{background:#e5eddf;border-color:#9aa992}.soldier-chip.red.deployed{background:#f3e4d8;border-color:#c69b88}
+.soldier-chip.dead:disabled{opacity:.3;filter:grayscale(1)}
+.soldier-chip .hp-mini{height:4px;width:78%;min-height:4px;flex:none;background:#e3e0d3}
+.soldier-chip.king{background:#f4ead14d}
+.vs-banner{font-size:.9rem;font-weight:600;letter-spacing:.08em;color:#777358;padding:2px 0;min-height:24px}
+.arena-wrap{border:1px solid #c8b995;border-radius:22px;box-shadow:0 12px 32px #6d542412,inset 0 0 0 5px #ffffff40}
+.hp-bars{gap:28px;padding:0 8px}
+.hp-block .label{font-size:.8rem;margin-bottom:7px;color:#5e6658}.hp-block.red{text-align:right}
+.hp-bar{height:10px;border:1px solid #a8af98;background:#dedfce;border-radius:10px;padding:1px}
+.hp-block.blue .hp-bar span{background:linear-gradient(90deg,#426e88,#86a5a8);border-radius:8px}
+.hp-block.red .hp-bar span{background:linear-gradient(90deg,#d6a081,#b45e4b);border-radius:8px}
+.hp-num{font-size:.68rem;margin-top:5px}
+.pick-hint{font-size:.83rem;background:#fff7df;border:1px solid #ded0a7;border-radius:12px;padding:12px;line-height:1.5}
+.skill-panel{border:1px solid #d6c6a7!important;border-radius:20px;background:#fffcf4f5;padding:12px 16px;box-shadow:0 6px 24px #5b48230c;gap:7px}
+.turn-label{font-size:.87rem;padding:5px;background:transparent!important}
+.skill-btns{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.skill-btns button{padding:14px 4px;border:1px solid #d3c6aa;border-radius:13px;box-shadow:0 3px 0 #cdbfa443}
+.skill-btns button .skill-name{font-size:1rem;letter-spacing:.12em}
+.skill-btns button .skill-desc{font-size:.65rem;letter-spacing:0;margin-top:4px}
+.skill-btns button.menggong{background:#f4e6d1}.skill-btns button.gedang{background:#e5ebdc}.skill-btns button.xuli{background:#e0e9ec}.skill-btns button.teji{background:#ede0da}
+.status-pills{min-height:0}.status-pills:empty{display:none}.status-pills span{border:1px solid #cbbd97;font-size:.68rem}
+.battle-journal{width:100%;border-bottom:1px solid #d8ceb7;padding:9px 2px}
+.battle-journal summary{cursor:pointer;font-size:.8rem;font-weight:700;color:#77735d}.battle-journal summary span{font-size:.7rem;font-weight:400;float:right;color:#9c927b}
+.log-box{border:0;border-radius:10px;background:#ffffff80;margin-top:10px;font-size:.73rem;max-height:130px}
+#battle-screen>.btn-row{margin-top:0}#battle-screen>.btn-row button{font-size:.72rem;padding:9px 16px;background:transparent;border-color:#c8bda4;box-shadow:none;color:#8a7b62}
+.victory-crown{filter:drop-shadow(0 4px 12px #b8923840)}
+@media(max-width:600px){
+ .screen{padding:22px 14px}.hero-art{height:260px}.hero-king-left{height:200px;left:2%}.hero-king-right{height:212px;right:1%}.hero-spear{height:125px;left:33%}.hero-sword{height:120px;right:28%}
+ #battle-screen{padding-top:64px;gap:9px}.battle-header h2{font-size:1.5rem}.battle-seal{font-size:.59rem;padding:7px 9px}.battle-header .eyebrow{font-size:.6rem}
+ .armies-row{gap:7px}.army-panel{padding:8px 5px;border-radius:13px}.army-panel h3{font-size:.65rem;letter-spacing:0;padding-bottom:6px;margin-bottom:5px}
+ #listBlue,#listRed{gap:1px}.soldier-chip{padding:5px 0;gap:4px;border-radius:7px}.soldier-chip .chip-sprite{height:37px}.soldier-chip .chip-name{font-size:.54rem}.soldier-chip .hp-mini{height:3px;min-height:3px}
+ .vs-banner{font-size:.76rem;padding:0;min-height:20px}.arena-wrap{border-radius:15px}.hp-bars{gap:18px;padding:0 3px}.hp-block .label{font-size:.65rem}.hp-num{font-size:.6rem}
+ .skill-panel{position:sticky;bottom:max(8px,env(safe-area-inset-bottom));z-index:30;padding:10px 8px;border-radius:16px;box-shadow:0 4px 24px #4f432326;backdrop-filter:blur(12px)}
+ .skill-btns{gap:6px}.skill-btns button{padding:13px 2px;border-radius:10px}.skill-btns button .skill-name{font-size:.9rem}.skill-btns button .skill-desc{font-size:.52rem;white-space:nowrap}.turn-label{font-size:.78rem}
+ .audio-toolbar{right:12px;gap:6px}.audio-settings summary{font-size:.65rem;padding:10px 11px}.mute-btn{height:36px;width:36px}
+ #title-screen{padding-top:78px}.battle-journal{padding:7px 2px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

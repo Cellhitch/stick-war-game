@@ -498,11 +498,11 @@
   <div id="aiSidePick" class="side-cards" style="margin-top:14px;display:none;">
     <div class="side-card blue" id="pickBlue" role="button" tabindex="0">
       <h3>🛡 操控蓝方</h3>
-      <p>金盔大王 · 矛兵 · 剑士 · 飞艇<br>电脑操控红方</p>
+      <p>金盔大王 · 矛兵 · 剑士 · 阔剑卫 · 尖矛卫<br>电脑操控红方</p>
     </div>
     <div class="side-card red" id="pickRed" role="button" tabindex="0">
       <h3>⚔️ 操控红方</h3>
-      <p>裂盾大王 · 矛兵 · 剑士 · 飞艇<br>电脑操控蓝方</p>
+      <p>裂盾大王 · 矛兵 · 剑士 · 阔剑卫 · 长矛卫<br>电脑操控蓝方</p>
     </div>
   </div>
   <div class="btn-row" style="margin-top:18px;">
@@ -591,21 +591,21 @@
 <script>
 /* ========== 数据：两军花名册 ========== */
 const ROSTER = {
-  /* 形象对齐水彩设定图：大王 / 矛兵 / 剑士 / 飞艇手 / 尖矛卫 */
+  /* 全新单人立绘：金盔大王 / 矛兵 / 剑士 / 尖矛卫 / 阔剑卫 —— 红方略强；飞艇已用剑士变体替换 */
   blue: [
-    { id: 'b1', name: '矛兵',     weapon: '长矛+圆盾',   hp: 112, atk: 26, isKing: false, sprite: 'blue_spear', aerial: false },
-    { id: 'b2', name: '剑士',     weapon: '菱纹阔剑',   hp: 105, atk: 30, isKing: false, sprite: 'blue_sword', aerial: false },
-    { id: 'b3', name: '尖矛卫',   weapon: '短矛+圆盾',   hp: 98,  atk: 24, isKing: false, sprite: 'blue_spear', aerial: false },
-    { id: 'b4', name: '飞艇手',   weapon: '木鸟飞艇',   hp: 86,  atk: 33, isKing: false, sprite: 'blue_flyer', aerial: true },
-    { id: 'b5', name: '金盔大王', weapon: '弯刃+圆盾',   hp: 200, atk: 36, isKing: true,  sprite: 'blue_king',  aerial: false },
+    { id: 'b1', name: '矛兵',     weapon: '长矛+圆盾',   hp: 112, atk: 26, isKing: false, sprite: 'spear_cone' },
+    { id: 'b2', name: '剑士',     weapon: '菱纹阔剑',   hp: 105, atk: 30, isKing: false, sprite: 'sword_tall' },
+    { id: 'b3', name: '尖矛卫',   weapon: '短矛+圆盾',   hp: 98,  atk: 24, isKing: false, sprite: 'spear_bowl' },
+    { id: 'b4', name: '阔剑卫',   weapon: '绑带阔剑',   hp: 92,  atk: 32, isKing: false, sprite: 'sword_blue' },
+    { id: 'b5', name: '金盔大王', weapon: '弯刃+圆盾',   hp: 200, atk: 36, isKing: true,  sprite: 'blue_king' },
   ],
-  /* 红方略强 */
+  /* 红方略强；非国王复用灰褐兵种立绘（对阵时水平翻转朝向） */
   red: [
-    { id: 'r1', name: '矛兵',     weapon: '长矛+圆盾',   hp: 126, atk: 30, isKing: false, sprite: 'red_spear', aerial: false },
-    { id: 'r2', name: '剑士',     weapon: '菱纹阔剑',   hp: 118, atk: 34, isKing: false, sprite: 'red_sword', aerial: false },
-    { id: 'r3', name: '长矛卫',   weapon: '长矛+小盾',   hp: 110, atk: 27, isKing: false, sprite: 'red_spear', aerial: false },
-    { id: 'r4', name: '飞艇手',   weapon: '木鸟飞艇',   hp: 98,  atk: 37, isKing: false, sprite: 'red_flyer', aerial: true },
-    { id: 'r5', name: '裂盾大王', weapon: '巨矛+塔盾',   hp: 236, atk: 43, isKing: true,  sprite: 'red_king',  aerial: false },
+    { id: 'r1', name: '矛兵',     weapon: '长矛+圆盾',   hp: 126, atk: 30, isKing: false, sprite: 'spear_cone' },
+    { id: 'r2', name: '剑士',     weapon: '菱纹阔剑',   hp: 118, atk: 34, isKing: false, sprite: 'sword_tall' },
+    { id: 'r3', name: '长矛卫',   weapon: '长矛+圆盾',   hp: 110, atk: 27, isKing: false, sprite: 'spear_bowl' },
+    { id: 'r4', name: '阔剑卫',   weapon: '绑带阔剑',   hp: 104, atk: 36, isKing: false, sprite: 'sword_blue' },
+    { id: 'r5', name: '裂盾大王', weapon: '巨矛+塔盾',   hp: 236, atk: 43, isKing: true,  sprite: 'red_king' },
   ]
 };
 
@@ -925,13 +925,11 @@ document.getElementById('muteBtn').onclick = () => {
 /* ========== 单位立绘精灵 ========== */
 const SPRITE_FILES = {
   blue_king: 'assets/sprites/blue_king.png',
-  blue_spear: 'assets/sprites/blue_spear.png',
-  blue_sword: 'assets/sprites/blue_sword.png',
-  blue_flyer: 'assets/sprites/blue_flyer.png',
   red_king: 'assets/sprites/red_king.png',
-  red_spear: 'assets/sprites/red_spear.png',
-  red_sword: 'assets/sprites/red_sword.png',
-  red_flyer: 'assets/sprites/red_flyer.png',
+  spear_cone: 'assets/sprites/spear_cone.png',
+  spear_bowl: 'assets/sprites/spear_bowl.png',
+  sword_tall: 'assets/sprites/sword_tall.png',
+  sword_blue: 'assets/sprites/sword_blue.png',
 };
 const SPRITES = {};
 let spritesReady = false;
@@ -957,14 +955,12 @@ function drawUnitSprite(x, groundY, facing, soldier, pose, ox) {
       facing > 0 ? '#3a6ea5' : '#c44536', pose, soldier.isKing);
     return;
   }
-  // target draw height
-  let th = soldier.isKing ? 150 : (soldier.aerial ? 78 : 108);
+  // target draw height — kings taller; all new art is ground troops
+  let th = soldier.isKing ? 158 : 112;
   if (pose === 'windup' || pose === 'strike') th *= 1.02;
   const scale = th / img.naturalHeight;
   let tw = img.naturalWidth * scale;
   let dy = groundY;
-  // flyers hover higher
-  if (soldier.aerial) dy = groundY - 52;
   // pose offsets
   let rot = 0, alpha = 1, bounce = 0;
   if (pose === 'windup') { bounce = -6; }
@@ -976,14 +972,8 @@ function drawUnitSprite(x, groundY, facing, soldier, pose, ox) {
   ctx.translate(x + leanOx, dy + bounce);
   ctx.rotate(rot);
   ctx.globalAlpha = alpha;
-  // sprites already face correct direction for their side; facing>0 = blue (right-facing art)
-  // blue art faces right, red art faces left — matches arena sides. No flip needed.
-  // If somehow wrong side sprite, flip:
-  const artFacesRight = soldier.sprite.startsWith('blue_');
-  const wantFaceRight = facing > 0;
-  if (artFacesRight !== wantFaceRight) {
-    ctx.scale(-1, 1);
-  }
+  // Base art faces roughly right; flip horizontally when fighting from the right side
+  if (facing < 0) ctx.scale(-1, 1);
   ctx.drawImage(img, -tw / 2, -th, tw, th);
   // crown badge for king (extra UI mark beyond crest helmet)
   if (soldier.isKing && pose !== 'dead') {
@@ -1424,7 +1414,7 @@ function drawArenaFrame() {
   const ap = state.arenaPose;
   if (state.fighterL) {
     const lx = w * 0.28 + ap.L.ox;
-    const ly = state.fighterL.aerial ? groundY - 40 : groundY - 30;
+    const ly = groundY - 30;
     if (ap.L.flash > 0) {
       ctx.save();
       ctx.globalAlpha = Math.min(0.55, ap.L.flash);
@@ -1438,7 +1428,7 @@ function drawArenaFrame() {
   }
   if (state.fighterR) {
     const rx = w * 0.72 + ap.R.ox;
-    const ry = state.fighterR.aerial ? groundY - 40 : groundY - 30;
+    const ry = groundY - 30;
     if (ap.R.flash > 0) {
       ctx.save();
       ctx.globalAlpha = Math.min(0.55, ap.R.flash);
@@ -1552,7 +1542,7 @@ function renderLists() {
       const src = SPRITE_FILES[s.sprite] || '';
       div.innerHTML = `
         <img class="chip-sprite" src="${src}" alt="" draggable="false"/>
-        <span class="chip-name">${s.isKing ? '👑 ' : ''}${s.name}${s.isKing ? ' <span class="chip-badge">大王</span>' : ''}${s.aerial ? ' ✈' : ''}</span>
+        <span class="chip-name">${s.isKing ? '👑 ' : ''}${s.name}${s.isKing ? ' <span class="chip-badge">大王</span>' : ''}</span>
         <div class="hp-mini"><span style="width:${s.alive ? pct : 0}%"></span></div>
       `;
       el.appendChild(div);

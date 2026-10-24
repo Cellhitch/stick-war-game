@@ -463,7 +463,7 @@
     <ol>
       <li>站得最高的兵是<strong>大王</strong>，最强但也最后出战。</li>
       <li>双方每次各派出 <strong>1 名士兵</strong>，进入 1v1 决斗。</li>
-      <li>决斗为<strong>回合制</strong>：双方轮流点选招数（猛攻 / 格挡 / 蓄力 / 特技），手机也可两人轮流点。</li>
+      <li>决斗为<strong>回合制</strong>：每回合必须<strong>手动点选</strong>招数（猛攻 / 格挡 / 蓄力 / 特技），不会自动出招。</li>
       <li>败者退场，胜者可继续出战；普通士兵尽墨后进入<strong>大王决胜</strong>！</li>
       <li>最后倒下的大王所属阵营，输掉整场战争。</li>
     </ol>
@@ -478,7 +478,7 @@
 <!-- MODE / SIDE SELECT -->
 <section id="side-screen" class="screen">
   <h2 style="margin-bottom:8px;">选择对战方式</h2>
-  <p class="subtitle">默认双人轮流点招 · 手机也能热座对战</p>
+  <p class="subtitle">每一步招数都需手动点按 · 绝不自动连招</p>
   <div class="mode-cards">
     <div class="mode-card primary-mode" id="pickHotseat" role="button" tabindex="0">
       <h3>👥 双人轮流（推荐）</h3>
@@ -486,7 +486,7 @@
     </div>
     <div class="mode-card" id="pickVsAi" role="button" tabindex="0">
       <h3>🤖 单人 vs 电脑</h3>
-      <p>你操控一方，电脑操控另一方并自动选招。</p>
+      <p>你操控一方并亲手点招；仅电脑回合由 AI 短暂停顿后出招。</p>
     </div>
   </div>
   <div id="aiSidePick" class="side-cards" style="margin-top:14px;display:none;">
@@ -500,7 +500,6 @@
     </div>
   </div>
   <div class="btn-row" style="margin-top:18px;">
-    <button id="btnAutoAll">观战 · 双方自动</button>
     <button id="btnSideBack">返回</button>
   </div>
 </section>
@@ -605,9 +604,8 @@ const ROSTER = {
 /* ========== 状态 ========== */
 let state = {
   screen: 'title',
-  mode: 'hotseat', // 'hotseat' | 'vsai' | 'auto'
-  playerSide: null, // in vsai: 'blue' | 'red'; null in hotseat/auto
-  fullAuto: false,
+  mode: 'hotseat', // 'hotseat' | 'vsai'  —— 无双方自动
+  playerSide: null, // in vsai: 'blue' | 'red'; null in hotseat
   muted: false,
   skipAnim: false,
   blue: [],
@@ -616,11 +614,12 @@ let state = {
   fighterR: null,
   battling: false,
   waitingPick: false,
-  pickSide: null, // which side is currently choosing a soldier
-  turnSide: null, // 'blue' | 'red' during duel
+  pickSide: null,
+  turnSide: null,
   charge: { blue: false, red: false },
   guard: { blue: false, red: false },
-  duelResolve: null, // Promise resolve when duel ends
+  _moveResolve: null,
+  _aiTimer: null,
 };
 
 function cloneRoster() {
@@ -634,9 +633,9 @@ function cloneRoster() {
   state.turnSide = null;
   state.charge = { blue: false, red: false };
   state.guard = { blue: false, red: false };
-  state.fullAuto = false;
   state.skipAnim = false;
-  state.duelResolve = null;
+  clearAiTimer();
+  state._moveResolve = null;
 }
 
 const MOVES = {
@@ -647,9 +646,19 @@ const MOVES = {
 };
 
 function isHumanSide(side) {
+  // 双人轮流：双方都是人类，必须手动点招
   if (state.mode === 'hotseat') return true;
-  if (state.mode === 'auto' || state.fullAuto) return false;
-  return state.playerSide === side;
+  // 单人 vs AI：只有玩家阵营是人类
+  if (state.mode === 'vsai') return state.playerSide === side;
+  // 任何未知模式一律当人类，绝不自动出招
+  return true;
+}
+
+function clearAiTimer() {
+  if (state._aiTimer) {
+    clearTimeout(state._aiTimer);
+    state._aiTimer = null;
+  }
 }
 
 /* ========== 屏幕切换 ========== */
@@ -659,28 +668,106 @@ function showScreen(id) {
   state.screen = id;
 }
 
-/* ========== 音效 (WebAudio) ========== */
+/* ========== 音效 (WebAudio · 金属碰撞) ========== */
 let audioCtx = null;
 function ensureAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
 }
 function beep(freq, dur, type='square', vol=0.08) {
   if (state.muted) return;
   try {
     ensureAudio();
+    const t0 = audioCtx.currentTime;
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = type; o.frequency.value = freq;
-    g.gain.value = vol;
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    g.gain.setValueAtTime(vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     o.connect(g); g.connect(audioCtx.destination);
-    o.start(); o.stop(audioCtx.currentTime + dur);
+    o.start(t0); o.stop(t0 + dur);
   } catch(e) {}
 }
-function sfxHit() { beep(180, 0.1, 'square', 0.1); setTimeout(() => beep(90, 0.12, 'sawtooth', 0.07), 40); }
+function noiseBurst(dur, vol, filterFreq, filterType='bandpass', Q=8) {
+  if (state.muted) return;
+  try {
+    ensureAudio();
+    const t0 = audioCtx.currentTime;
+    const n = Math.ceil(audioCtx.sampleRate * dur);
+    const buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = filterType;
+    filt.frequency.value = filterFreq;
+    filt.Q.value = Q;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    src.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+    src.start(t0); src.stop(t0 + dur);
+  } catch(e) {}
+}
+function metallicClang(variant) {
+  if (state.muted) return;
+  try {
+    ensureAudio();
+    const t0 = audioCtx.currentTime;
+    const variants = [
+      { freqs: [2400, 3600, 5100], noise: 4200, vol: 0.14 },
+      { freqs: [1800, 2900, 4400], noise: 3200, vol: 0.16 },
+      { freqs: [2100, 3300, 4800], noise: 3800, vol: 0.13 },
+      { freqs: [1500, 2700, 3900], noise: 2800, vol: 0.15 },
+    ];
+    const v = variants[(variant == null ? Math.floor(Math.random()*4) : variant) % 4];
+    v.freqs.forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = i === 0 ? 'square' : 'sawtooth';
+      o.frequency.setValueAtTime(f, t0);
+      o.frequency.exponentialRampToValueAtTime(f * 0.55, t0 + 0.12);
+      const peak = v.vol * (i === 0 ? 1 : 0.45);
+      g.gain.setValueAtTime(peak, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.16 + i * 0.03);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t0); o.stop(t0 + 0.22);
+    });
+    noiseBurst(0.08, v.vol * 0.7, v.noise, 'bandpass', 6);
+  } catch(e) {}
+}
+function sfxHit() { metallicClang(); }
+function sfxBlock() {
+  if (state.muted) return;
+  metallicClang(1);
+  setTimeout(() => { noiseBurst(0.06, 0.1, 2200, 'highpass', 2); }, 30);
+}
+function sfxClash() {
+  metallicClang(2);
+  setTimeout(() => metallicClang(0), 50);
+}
 function sfxWin() { [440,554,659,880].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'triangle',0.09), i*120)); }
-function sfxSelect() { beep(520, 0.06, 'sine', 0.06); }
+function sfxSelect() { beep(520, 0.06, 'sine', 0.05); }
 function sfxKing() { [330,440,550].forEach((f,i)=>setTimeout(()=>beep(f,0.2,'triangle',0.1), i*150)); }
+function sfxMeow() {
+  if (state.muted) return;
+  try {
+    ensureAudio();
+    const t0 = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(780 + Math.random()*80, t0);
+    o.frequency.linearRampToValueAtTime(520, t0 + 0.12);
+    o.frequency.linearRampToValueAtTime(640, t0 + 0.22);
+    g.gain.setValueAtTime(0.001, t0);
+    g.gain.linearRampToValueAtTime(0.06, t0 + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t0); o.stop(t0 + 0.3);
+  } catch(e) {}
+}
 
 document.getElementById('muteBtn').onclick = () => {
   state.muted = !state.muted;
@@ -874,17 +961,142 @@ function clearArena() {
   ctx.stroke();
 }
 
-function drawArenaIdle() {
+/* ========== 观战小猫咪（涂鸦风） ========== */
+const cats = [
+  { side: 'left', xRatio: 0.06, bob: 0, meowUntil: 0, nextMeow: 0, scale: 1 },
+  { side: 'left', xRatio: 0.13, bob: 1.2, meowUntil: 0, nextMeow: 0, scale: 0.85 },
+  { side: 'right', xRatio: 0.87, bob: 0.6, meowUntil: 0, nextMeow: 0, scale: 0.9 },
+  { side: 'right', xRatio: 0.94, bob: 1.8, meowUntil: 0, nextMeow: 0, scale: 1.05 },
+];
+let catAnimId = null;
+let catLastTs = 0;
+
+function drawDoodleCat(x, y, facing, scale, meowing) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing * scale, scale);
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.fillStyle = '#1a1a1a';
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // body
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 12, 9, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // head
+  ctx.beginPath();
+  ctx.arc(14, -10, 8, 0, Math.PI * 2);
+  ctx.stroke();
+  // ears (triangles)
+  ctx.beginPath();
+  ctx.moveTo(8, -15); ctx.lineTo(10, -24); ctx.lineTo(14, -16);
+  ctx.moveTo(16, -16); ctx.lineTo(20, -25); ctx.lineTo(22, -15);
+  ctx.stroke();
+  // eyes
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(12, -11); ctx.lineTo(12, -8);
+  ctx.moveTo(17, -11); ctx.lineTo(17, -8);
+  ctx.stroke();
+  // whiskers
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(20, -8); ctx.lineTo(28, -10);
+  ctx.moveTo(20, -6); ctx.lineTo(28, -5);
+  ctx.moveTo(8, -8); ctx.lineTo(1, -10);
+  ctx.moveTo(8, -6); ctx.lineTo(1, -5);
+  ctx.stroke();
+  // tail
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(-12, -2);
+  ctx.quadraticCurveTo(-22, -14, -18, -22);
+  ctx.stroke();
+  // paws
+  ctx.beginPath();
+  ctx.moveTo(-6, 8); ctx.lineTo(-6, 14);
+  ctx.moveTo(4, 8); ctx.lineTo(4, 14);
+  ctx.stroke();
+  if (meowing) {
+    ctx.save();
+    ctx.scale(facing, 1); // keep bubble readable
+    const bx = facing > 0 ? 28 : -28;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(bx, -28, 14, 9, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // tiny tail of bubble
+    ctx.beginPath();
+    ctx.moveTo(bx - facing * 6, -20);
+    ctx.lineTo(bx - facing * 2, -14);
+    ctx.stroke();
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('喵', bx, -28);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawSpectatorCats(now) {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const groundY = h - 40;
+  cats.forEach((c, i) => {
+    if (!c.nextMeow) c.nextMeow = now + 2500 + Math.random() * 6000 + i * 800;
+    if (now >= c.nextMeow && now > c.meowUntil) {
+      c.meowUntil = now + 900;
+      c.nextMeow = now + 5000 + Math.random() * 9000;
+      if (state.screen === 'battle' && !state.muted) sfxMeow();
+    }
+    const bobY = Math.sin(now / 450 + c.bob) * 2.5;
+    const facing = c.side === 'left' ? 1 : -1;
+    const meowing = now < c.meowUntil;
+    drawDoodleCat(w * c.xRatio, groundY + bobY, facing, c.scale, meowing);
+  });
+}
+
+function drawArenaScene(extraDraw) {
   if (state.screen !== 'battle') return;
   clearArena();
   const w = canvas.clientWidth, h = canvas.clientHeight;
   const groundY = h - 56;
-  if (state.fighterL) {
-    drawStick(w * 0.28, groundY, 1, state.fighterL.weaponType, '#3a6ea5', 'idle');
+  drawSpectatorCats(performance.now());
+  if (extraDraw) extraDraw(w, h, groundY);
+  else {
+    if (state.fighterL) {
+      drawStick(w * 0.28, groundY, 1, state.fighterL.weaponType, '#3a6ea5', 'idle');
+    }
+    if (state.fighterR) {
+      drawStick(w * 0.72, groundY, -1, state.fighterR.weaponType, '#c44536', 'idle');
+    }
   }
-  if (state.fighterR) {
-    drawStick(w * 0.72, groundY, -1, state.fighterR.weaponType, '#c44536', 'idle');
-  }
+}
+
+function drawArenaIdle() {
+  drawArenaScene(null);
+}
+
+function ensureCatLoop() {
+  if (catAnimId) return;
+  const tick = (ts) => {
+    catAnimId = requestAnimationFrame(tick);
+    if (state.screen !== 'battle') return;
+    // Soft refresh ~8fps when idle so cats bob / meow without fighting strike anims
+    if (state.battling && state.turnSide && document.getElementById('skillPanel').classList.contains('visible')) {
+      if (!catLastTs || ts - catLastTs > 120) {
+        catLastTs = ts;
+        drawArenaIdle();
+      }
+    } else if (!state.battling) {
+      if (!catLastTs || ts - catLastTs > 140) {
+        catLastTs = ts;
+        drawArenaIdle();
+      }
+    }
+  };
+  catAnimId = requestAnimationFrame(tick);
 }
 
 /* ========== UI 花名册 ========== */
@@ -1000,27 +1212,32 @@ function setVs(text) {
 function hideSkillPanel() {
   const p = document.getElementById('skillPanel');
   p.classList.remove('visible', 'turn-blue', 'turn-red');
-  state.turnSide = null;
+  clearAiTimer();
 }
 
 function showSkillPanel(side) {
   const p = document.getElementById('skillPanel');
   const label = document.getElementById('turnLabel');
+  const btns = document.getElementById('skillBtns');
   p.classList.add('visible');
   p.classList.toggle('turn-blue', side === 'blue');
   p.classList.toggle('turn-red', side === 'red');
   const name = side === 'blue' ? '蓝方' : '红方';
   const fighter = getFighter(side);
   const who = fighter ? fighter.name : '';
+  const human = isHumanSide(side);
+  // 人类回合：按钮可点；AI 回合：禁用，绝不响应点击
+  btns.querySelectorAll('button').forEach(b => { b.disabled = !human; });
   if (state.mode === 'hotseat') {
-    label.textContent = `${name}回合 · ${who} 请选招`;
-  } else if (isHumanSide(side)) {
-    label.textContent = `你的回合 · ${who} 请选招`;
+    label.textContent = `${name}回合 · ${who} 请点选招数`;
+  } else if (human) {
+    label.textContent = `你的回合 · ${who} 请点选招数`;
   } else {
-    label.textContent = `电脑思考中 · ${who}`;
+    label.textContent = `电脑思考中 · ${who}…`;
   }
   label.className = 'turn-label ' + side;
   updateStatusPills();
+  drawArenaIdle();
 }
 
 /* ========== 出战逻辑 ========== */
@@ -1212,13 +1429,21 @@ async function startDuel() {
 
 function waitForMove(side) {
   return new Promise(resolve => {
+    clearAiTimer();
     state._moveResolve = resolve;
+    state.turnSide = side;
     showSkillPanel(side);
 
-    if (!isHumanSide(side) || state.fullAuto) {
-      const delay = state.skipAnim ? 80 : 550 + Math.random() * 400;
-      setTimeout(() => {
+    // 仅 vsai 且当前是电脑阵营时，短暂停顿后由 AI 选招。
+    // 双人轮流 / 人类回合：绝对不设定时器，必须手动点按钮。
+    if (state.mode === 'vsai' && !isHumanSide(side)) {
+      const delay = state.skipAnim ? 280 : 700 + Math.random() * 500;
+      state._aiTimer = setTimeout(() => {
+        state._aiTimer = null;
         if (state._moveResolve !== resolve) return;
+        if (!state.battling) return;
+        if (state.turnSide !== side) return;
+        if (isHumanSide(side)) return; // 双保险
         const move = aiChooseMove(side);
         pickMove(move, true);
       }, delay);
@@ -1248,12 +1473,20 @@ function pickMove(moveName, fromAi) {
   if (!MOVES[moveName]) return;
   const side = state.turnSide;
   if (!side) return;
-  if (!fromAi && !isHumanSide(side)) return;
+  // 人类只能在自己回合手动点；AI 只能通过 fromAi 触发
+  if (fromAi) {
+    if (isHumanSide(side)) return; // 禁止 AI 替人类出招
+    if (state.mode !== 'vsai') return;
+  } else {
+    if (!isHumanSide(side)) return;
+  }
 
+  clearAiTimer();
   const resolve = state._moveResolve;
   state._moveResolve = null;
+  ensureAudio(); // unlock audio on user gesture
   hideSkillPanel();
-  // keep turnSide until resolve finishes anim label
+  sfxSelect();
   resolve(moveName);
 }
 
@@ -1272,7 +1505,7 @@ async function resolveMove(side, move) {
     state.guard[side] = true;
     log(`🛡 ${me.name} 进入格挡姿势，下一击伤害大幅减免！`);
     await animateStrike(side, 'guard');
-    sfxSelect();
+    sfxBlock();
     return;
   }
 
@@ -1280,7 +1513,6 @@ async function resolveMove(side, move) {
     state.charge[side] = true;
     log(`⚡ ${me.name} 蓄力！下一次猛攻威力大增！`);
     await animateStrike(side, 'windup');
-    sfxSelect();
     return;
   }
 
@@ -1315,16 +1547,19 @@ async function resolveMove(side, move) {
   let dmg = calcDamage(me, foe, mult, pierce);
 
   // Apply foe guard
+  let blocked = false;
   if (state.guard[foeSide]) {
     const reduced = Math.max(1, Math.round(dmg * (pierce ? 0.55 : 0.35)));
     log(`🛡 ${foe.name} 格挡生效：${dmg} → <span class="dmg">${reduced}</span>`);
     dmg = reduced;
     state.guard[foeSide] = false;
+    blocked = true;
   }
 
   foe.hp = Math.max(0, foe.hp - dmg);
   log(`${me.name} 对 ${foe.name} 造成 <span class="dmg">${dmg}</span> 伤害！`);
-  sfxHit();
+  if (blocked) sfxClash();
+  else sfxHit();
 
   if (selfDmg > 0 && me.hp > 0) {
     me.hp = Math.max(1, me.hp - selfDmg); // don't suicide via special unless already dying from foe
@@ -1352,25 +1587,24 @@ function sleep(ms) {
 }
 
 async function animateStrike(side, kind) {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  const groundY = h - 56;
   let poses;
   if (kind === 'guard') poses = state.skipAnim ? ['idle'] : ['idle', 'hurt', 'idle'];
   else if (kind === 'windup') poses = state.skipAnim ? ['windup'] : ['windup', 'windup', 'idle'];
   else poses = state.skipAnim ? ['strike'] : ['windup', 'strike', 'idle'];
 
   for (const pose of poses) {
-    clearArena();
-    if (state.fighterL) {
-      const ox = side === 'blue' && pose === 'strike' ? 18 : 0;
-      const p = side === 'blue' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
-      drawStick(w * 0.28 + ox, groundY, 1, state.fighterL.weaponType, '#3a6ea5', p);
-    }
-    if (state.fighterR) {
-      const ox = side === 'red' && pose === 'strike' ? -18 : 0;
-      const p = side === 'red' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
-      drawStick(w * 0.72 + ox, groundY, -1, state.fighterR.weaponType, '#c44536', p);
-    }
+    drawArenaScene((w, h, groundY) => {
+      if (state.fighterL) {
+        const ox = side === 'blue' && pose === 'strike' ? 18 : 0;
+        const p = side === 'blue' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
+        drawStick(w * 0.28 + ox, groundY, 1, state.fighterL.weaponType, '#3a6ea5', p);
+      }
+      if (state.fighterR) {
+        const ox = side === 'red' && pose === 'strike' ? -18 : 0;
+        const p = side === 'red' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
+        drawStick(w * 0.72 + ox, groundY, -1, state.fighterR.weaponType, '#c44536', p);
+      }
+    });
     if (pose === 'strike') {
       canvas.classList.remove('shake');
       void canvas.offsetWidth;
@@ -1382,18 +1616,17 @@ async function animateStrike(side, kind) {
 }
 
 async function animateDeath(who) {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  const groundY = h - 56;
   for (let i = 0; i < (state.skipAnim ? 1 : 4); i++) {
-    clearArena();
-    if (state.fighterL) {
-      drawStick(w * 0.28, groundY, 1, state.fighterL.weaponType, '#3a6ea5',
-        (who === 'blue' || who === 'both') ? 'dead' : 'idle');
-    }
-    if (state.fighterR) {
-      drawStick(w * 0.72, groundY, -1, state.fighterR.weaponType, '#c44536',
-        (who === 'red' || who === 'both') ? 'dead' : 'idle');
-    }
+    drawArenaScene((w, h, groundY) => {
+      if (state.fighterL) {
+        drawStick(w * 0.28, groundY, 1, state.fighterL.weaponType, '#3a6ea5',
+          (who === 'blue' || who === 'both') ? 'dead' : 'idle');
+      }
+      if (state.fighterR) {
+        drawStick(w * 0.72, groundY, -1, state.fighterR.weaponType, '#c44536',
+          (who === 'red' || who === 'both') ? 'dead' : 'idle');
+      }
+    });
     await sleep(120);
   }
 }
@@ -1479,10 +1712,11 @@ function endWar() {
 
 /* ========== 开始战斗 ========== */
 function beginBattle(mode, playerSide) {
+  // 只允许 hotseat / vsai，禁止任何双方自动模式
+  if (mode !== 'hotseat' && mode !== 'vsai') mode = 'hotseat';
   cloneRoster();
-  state.mode = mode; // 'hotseat' | 'vsai' | 'auto'
-  state.playerSide = playerSide || null;
-  state.fullAuto = mode === 'auto';
+  state.mode = mode;
+  state.playerSide = mode === 'vsai' ? playerSide : null;
   document.getElementById('combatLog').innerHTML = '';
   hideSkillPanel();
   document.getElementById('aiSidePick').style.display = 'none';
@@ -1490,27 +1724,23 @@ function beginBattle(mode, playerSide) {
   if (mode === 'hotseat') {
     document.getElementById('labelBlue').textContent = '左军 · 蓝方（玩家）';
     document.getElementById('labelRed').textContent = '右军 · 红方（玩家）';
-  } else if (mode === 'vsai') {
-    if (playerSide === 'blue') {
-      document.getElementById('labelBlue').textContent = '左军 · 蓝方（你）';
-      document.getElementById('labelRed').textContent = '右军 · 红方（电脑）';
-    } else {
-      document.getElementById('labelBlue').textContent = '左军 · 蓝方（电脑）';
-      document.getElementById('labelRed').textContent = '右军 · 红方（你）';
-    }
+  } else if (playerSide === 'blue') {
+    document.getElementById('labelBlue').textContent = '左军 · 蓝方（你）';
+    document.getElementById('labelRed').textContent = '右军 · 红方（电脑）';
   } else {
-    document.getElementById('labelBlue').textContent = '左军 · 蓝方';
-    document.getElementById('labelRed').textContent = '右军 · 红方';
+    document.getElementById('labelBlue').textContent = '左军 · 蓝方（电脑）';
+    document.getElementById('labelRed').textContent = '右军 · 红方（你）';
   }
 
   showScreen('battle-screen');
   resizeCanvas();
-  log('🏕️ 两军对垒！回合制出招：猛攻 / 格挡 / 蓄力 / 特技。大王最后登场！');
+  ensureCatLoop();
+  ensureAudio();
+  log('🏕️ 两军对垒！每回合必须手动点招（猛攻 / 格挡 / 蓄力 / 特技）。大王最后登场！');
   updateHpBars();
   renderLists();
   drawArenaIdle();
 
-  // Blue picks first, then red, then duel
   tryStartDuel();
 }
 
@@ -1534,7 +1764,6 @@ document.getElementById('pickVsAi').onclick = () => {
 };
 document.getElementById('pickBlue').onclick = () => beginBattle('vsai', 'blue');
 document.getElementById('pickRed').onclick = () => beginBattle('vsai', 'red');
-document.getElementById('btnAutoAll').onclick = () => beginBattle('auto', null);
 document.getElementById('btnReplay').onclick = () => {
   document.getElementById('aiSidePick').style.display = 'none';
   showScreen('side-screen');
@@ -1547,6 +1776,7 @@ document.getElementById('btnSkipAnim').onclick = () => {
 };
 document.getElementById('btnSurrender').onclick = () => {
   state.battling = false;
+  clearAiTimer();
   if (state._moveResolve) {
     const r = state._moveResolve;
     state._moveResolve = null;
@@ -1558,7 +1788,8 @@ document.getElementById('btnSurrender').onclick = () => {
 
 document.getElementById('skillBtns').onclick = (e) => {
   const btn = e.target.closest('button[data-move]');
-  if (!btn) return;
+  if (!btn || btn.disabled) return;
+  // 只接受人类手动点击；绝不程序化触发
   pickMove(btn.getAttribute('data-move'), false);
 };
 

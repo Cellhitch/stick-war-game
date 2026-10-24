@@ -32,6 +32,12 @@ button.primary{background:#3d5c53;color:#fffbed;border-color:#3d5c53;padding:15p
 .audio-popover input{width:100%;accent-color:#557466;cursor:pointer;min-height:26px}
 #audioStatus{font-size:.7rem;color:#8a816d;line-height:1.6;border-top:1px solid #e7decd;padding-top:10px}
 .card{border:1px solid #d4c5a7;border-radius:22px;box-shadow:0 10px 40px #5e4d2410;padding:28px;max-width:560px}
+.origin-drawing{margin:4px 0 18px;padding:12px 12px 10px;background:#fffdf8;border:1px solid #d9ccb0;border-radius:18px;box-shadow:inset 0 0 0 4px #ffffff70}
+.origin-drawing img{display:block;width:100%;max-width:320px;height:auto;margin:0 auto;border-radius:14px;object-fit:contain}
+.origin-drawing figcaption{margin-top:10px;font-size:.9rem;line-height:1.6;color:#6e6554}
+.skill-legend{margin-top:14px;padding-top:12px;border-top:1px dashed #d8ceb7}
+.skill-legend p{font-family:'Songti SC','STSong',serif;font-weight:800;margin-bottom:6px;text-align:center;color:#3e5144}
+.victory-king{display:block;width:min(160px,42vw);height:auto;margin:0 auto 2px;object-fit:contain;filter:drop-shadow(0 8px 4px #6c54361b)}
 #side-screen,#rules-screen,#victory-screen{justify-content:center;gap:14px;padding-top:78px}
 .mode-cards{max-width:550px;gap:14px;margin-top:10px}
 .mode-card{border:1px solid #d1c5ae;border-radius:18px;padding:23px;background:#fffdf6}

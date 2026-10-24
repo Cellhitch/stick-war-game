@@ -329,6 +329,7 @@
   .mode-card.primary-mode { background: #fff3cd; border-color: var(--gold); }
 </style>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="learning.css">
 </head>
 <body>
 
@@ -399,6 +400,9 @@
     <button id="btnRulesBack">返回</button>
   </div>
 </section>
+
+<!-- PRE-GAME LEARNING: identity, then two practice questions -->
+<section id="learning-screen" class="screen" aria-label="出征前的智慧试炼"></section>
 
 <!-- MODE / SIDE SELECT -->
 <section id="side-screen" class="screen">
@@ -522,6 +526,9 @@
 
 <script src="audio.js"></script>
 <script src="victory.js"></script>
+<script src="learning-data.js"></script>
+<script src="learning-core.js"></script>
+<script src="learning.js"></script>
 <script>
 /* ========== 数据：两军花名册 ========== */
 const ROSTER = {
@@ -2065,6 +2072,7 @@ function endWar() {
 
 /* ========== 开始战斗 ========== */
 function beginBattle(mode, playerSide) {
+  if (!learningGatePassed()) { startLearningGate(); return; }
   // 只允许 hotseat / vsai，禁止任何双方自动模式
   if (mode !== 'hotseat' && mode !== 'vsai') mode = 'hotseat';
   cloneRoster();
@@ -2101,13 +2109,11 @@ function beginBattle(mode, playerSide) {
 /* ========== 按钮绑定 ========== */
 document.getElementById('btnStart').onclick = () => {
   unlockAudioFromGesture();
-  document.getElementById('aiSidePick').style.display = 'none';
-  showScreen('side-screen');
+  startLearningGate();
 };
 document.getElementById('btnRules').onclick = () => showScreen('rules-screen');
 document.getElementById('btnRulesOk').onclick = () => {
-  document.getElementById('aiSidePick').style.display = 'none';
-  showScreen('side-screen');
+  startLearningGate();
 };
 document.getElementById('btnRulesBack').onclick = () => showScreen('title-screen');
 document.getElementById('btnSideBack').onclick = () => showScreen('title-screen');
@@ -2120,8 +2126,7 @@ document.getElementById('pickVsAi').onclick = () => {
 document.getElementById('pickBlue').onclick = () => beginBattle('vsai', 'blue');
 document.getElementById('pickRed').onclick = () => beginBattle('vsai', 'red');
 document.getElementById('btnReplay').onclick = () => {
-  document.getElementById('aiSidePick').style.display = 'none';
-  showScreen('side-screen');
+  startLearningGate();
 };
 document.getElementById('btnToTitle').onclick = () => showScreen('title-screen');
 

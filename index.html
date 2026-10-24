@@ -603,7 +603,7 @@ const ROSTER = {
 
 /* ========== 状态 ========== */
 let state = {
-  screen: 'title',
+  screen: 'title-screen',
   mode: 'hotseat', // 'hotseat' | 'vsai'  —— 无双方自动
   playerSide: null, // in vsai: 'blue' | 'red'; null in hotseat
   muted: false,
@@ -1168,7 +1168,7 @@ function drawSpectatorCats(now) {
     if (now >= c.nextMeow && now > c.meowUntil) {
       c.meowUntil = now + 900;
       c.nextMeow = now + 5500 + (i * 2300) % 8000;
-      if (state.screen === 'battle' && !state.muted) sfxMeow();
+      if (state.screen === 'battle-screen' && !state.muted) sfxMeow();
     }
     const bobY = Math.sin(now / 450 + c.bob) * 2.5;
     const facing = c.side === 'left' ? 1 : -1;
@@ -1184,7 +1184,7 @@ function resetArenaPoses() {
 }
 
 function drawArenaFrame() {
-  if (state.screen !== 'battle') return;
+  if (state.screen !== 'battle-screen') return;
   drawFixedBattlefield();
   const w = canvas.clientWidth, h = canvas.clientHeight;
   const groundY = h - 56;
@@ -1249,7 +1249,7 @@ function drawArenaFrame() {
 
 function drawArenaScene(extraDraw) {
   // legacy hook: if callback provided, temporarily use it after bg+cats
-  if (state.screen !== 'battle') return;
+  if (state.screen !== 'battle-screen') return;
   if (!extraDraw) {
     drawArenaFrame();
     return;
@@ -1270,7 +1270,7 @@ function ensureCatLoop() {
   if (catAnimId) return;
   const tick = (ts) => {
     catAnimId = requestAnimationFrame(tick);
-    if (state.screen !== 'battle') return;
+    if (state.screen !== 'battle-screen') return;
     // Always keep cats/background alive during duel (including clash anim frames)
     if (!catLastTs || ts - catLastTs > 50) {
       catLastTs = ts;

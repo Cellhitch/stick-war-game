@@ -28,7 +28,7 @@ function renderLearningGate(){
       <div class="learn-profiles">${Object.entries(LEARNING_PROFILES).map(([key,p])=>`
         <button type="button" data-learn-role="${key}" class="learn-profile ${p.tone} ${s.role===key?'selected':''}" aria-pressed="${s.role===key}">
           <span class="profile-check" aria-hidden="true">${s.role===key?'✓':'＋'}</span>
-          <span class="profile-art"><span class="profile-orbit" aria-hidden="true">${p.symbol}</span><img src="assets/sprites/${p.sprite}.png" alt="" draggable="false"></span>
+          <span class="profile-art"><span class="profile-orbit" aria-hidden="true">${p.symbol}</span><img src="assets/sprites/${p.sprite}-hd.webp" alt="" draggable="false"></span>
           <span class="profile-name">${p.name}</span><span class="profile-title">${p.title}</span><span class="profile-detail">${p.detail}</span>
         </button>`).join('')}</div>
       <div class="learn-start"><p><span aria-hidden="true">✦</span> 两道小挑战，开启一场大冒险</p><button type="button" class="primary" data-learn-action="start" ${s.role?'':'disabled'}>${s.role?'和'+LEARNING_PROFILES[s.role].name+'一起闯关':'先选择弟弟或姐姐'} <span aria-hidden="true">→</span></button><small>每个题库 20 题，每次随机抽取 2 题</small></div>`;
@@ -40,7 +40,7 @@ function renderLearningGate(){
   learningRoot.innerHTML=learningRoad()+`
     <header class="learn-heading quiz-heading"><p class="eyebrow">智慧试炼 · 第二关</p><h2 id="learnTitle" tabindex="-1">${p.name}的${p.subject}小挑战</h2><p>想一想，选一选。学会了，就离出征更近一步。</p></header>
     <div class="learn-quest-layout">
-      <aside class="learn-companion ${p.tone}" aria-label="你的冒险伙伴"><span class="companion-symbol" aria-hidden="true">${p.symbol}</span><img src="assets/sprites/${p.sprite}.png" alt="" draggable="false"><strong>${p.title}</strong><p>不着急，慢慢想。<br>每一次思考，都有收获。</p><span class="companion-caption">勇气，也来自智慧。</span></aside>
+      <aside class="learn-companion ${p.tone}" aria-label="你的冒险伙伴"><span class="companion-symbol" aria-hidden="true">${p.symbol}</span><img src="assets/sprites/${p.sprite}-hd.webp" alt="" draggable="false"><strong>${p.title}</strong><p>不着急，慢慢想。<br>每一次思考，都有收获。</p><span class="companion-caption">勇气，也来自智慧。</span></aside>
       <div class="learn-question-area">
         <div class="learn-progress"><span>通行印记 <strong>${complete} / 2</strong></span><div class="learn-stamps" aria-label="已通过 ${complete} 道题">${[0,1].map(i=>`<span class="${i<complete?'stamped':''}" aria-hidden="true">${i<complete?'✓':'✦'}</span>`).join('')}</div></div>
         <article class="learn-question-card">

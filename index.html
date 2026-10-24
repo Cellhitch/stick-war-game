@@ -144,8 +144,7 @@
   .soldier-chip.king .chip-badge { background: #ffe082; }
   .chip-sprite {
     width: 36px; height: 40px; object-fit: contain; flex-shrink: 0;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: high-quality;
+    image-rendering: auto;
   }
   .soldier-chip .chip-name { min-width: 3.5em; }
   .soldier-chip .hp-mini {
@@ -224,9 +223,8 @@
     height: auto;
     margin: 0 auto 4px;
     object-fit: contain;
-    filter: drop-shadow(0 6px 6px rgba(108, 84, 54, 0.08));
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: high-quality;
+    filter: none;
+    image-rendering: auto;
   }
   .origin-drawing {
     margin: 0 0 16px;
@@ -331,8 +329,8 @@
   .mode-card p { font-size: 0.85rem; opacity: 0.75; }
   .mode-card.primary-mode { background: #fff3cd; border-color: var(--gold); }
 </style>
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="learning.css">
+<link rel="stylesheet" href="style.css?v=hd1">
+<link rel="stylesheet" href="learning.css?v=hd1">
 </head>
 <body>
 
@@ -360,10 +358,10 @@
     <span class="hero-sun" aria-hidden="true"></span>
     <span class="hero-hill hill-back" aria-hidden="true"></span>
     <span class="hero-hill hill-front" aria-hidden="true"></span>
-    <img class="hero-unit hero-king-left" src="assets/sprites/blue_king.png" alt="金盔大王">
-    <img class="hero-unit hero-spear" src="assets/sprites/spear_cone.png" alt="矛兵">
-    <img class="hero-unit hero-sword" src="assets/sprites/sword_tall.png" alt="剑士">
-    <img class="hero-unit hero-king-right" src="assets/sprites/red_king.png" alt="裂盾大王">
+    <img class="hero-unit hero-king-left" src="assets/sprites/blue_king-hd.webp" alt="金盔大王">
+    <img class="hero-unit hero-spear" src="assets/sprites/spear_cone-hd.webp" alt="矛兵">
+    <img class="hero-unit hero-sword" src="assets/sprites/sword_tall-hd.webp" alt="剑士">
+    <img class="hero-unit hero-king-right" src="assets/sprites/red_king-hd.webp" alt="裂盾大王">
     <span class="hero-caption">纸上王国 · 大王决胜</span>
   </div>
   <div class="btn-row">
@@ -511,9 +509,9 @@
   <img id="victoryKing" class="victory-king" alt="" width="180" height="234">
   <div class="victory-film">
     <video id="victoryVideo" width="1280" height="720" playsinline muted preload="none"
-      poster="assets/video/victory-poster.jpg" aria-label="士兵胜利庆祝动画，时长五秒">
-      <source src="assets/video/victory-5s-silent.webm" type="video/webm">
-      <source src="assets/video/victory-5s-silent.mp4" type="video/mp4">
+      poster="assets/video/victory-hd-poster.jpg" aria-label="士兵胜利庆祝动画，时长五秒">
+      <source src="assets/video/victory-hd.webm" type="video/webm">
+      <source src="assets/video/victory-hd.mp4" type="video/mp4">
       你的浏览器暂不支持播放视频。
     </video>
   </div>
@@ -531,7 +529,7 @@
 <script src="victory.js?v=2"></script>
 <script src="learning-data.js"></script>
 <script src="learning-core.js"></script>
-<script src="learning.js"></script>
+<script src="learning.js?v=hd1"></script>
 <script>
 /* ========== 数据：两军花名册 ========== */
 const ROSTER = {
@@ -720,12 +718,12 @@ function sfxKing() { [330,440,550].forEach((f,i)=>setTimeout(()=>beep(f,0.2,'tri
 
 /* ========== 单位立绘精灵 ========== */
 const SPRITE_FILES = {
-  blue_king: 'assets/sprites/blue_king.png',
-  red_king: 'assets/sprites/red_king.png',
-  spear_cone: 'assets/sprites/spear_cone.png',
-  spear_bowl: 'assets/sprites/spear_bowl.png',
-  sword_tall: 'assets/sprites/sword_tall.png',
-  sword_blue: 'assets/sprites/sword_blue.png',
+  blue_king: 'assets/sprites/blue_king-hd.webp',
+  red_king: 'assets/sprites/red_king-hd.webp',
+  spear_cone: 'assets/sprites/spear_cone-hd.webp',
+  spear_bowl: 'assets/sprites/spear_bowl-hd.webp',
+  sword_tall: 'assets/sprites/sword_tall-hd.webp',
+  sword_blue: 'assets/sprites/sword_blue-hd.webp',
 };
 const SPRITES = {};
 let spritesReady = false;
@@ -764,8 +762,16 @@ function drawUnitSprite(x, groundY, facing, soldier, pose, ox) {
   if (pose === 'hurt') { bounce = 4; alpha = 0.92; }
   if (pose === 'dead') { rot = facing * 1.15; alpha = 0.75; bounce = 10; }
 
+  // Keep the rotated artwork inside the arena, including a fallen king's feet.
+  const corners = [[-tw/2,-th],[tw/2,-th],[-tw/2,0],[tw/2,0]].map(([px,py]) => {
+    px *= facing < 0 ? -1 : 1;
+    return [px*Math.cos(rot)-py*Math.sin(rot), px*Math.sin(rot)+py*Math.cos(rot)];
+  });
+  const xs = corners.map(p => p[0]), ys = corners.map(p => p[1]);
+  const anchorX = Math.max(5-Math.min(...xs), Math.min(x+leanOx, canvas.clientWidth-5-Math.max(...xs)));
+  const anchorY = Math.max(5-Math.min(...ys), Math.min(dy+bounce, canvas.clientHeight-5-Math.max(...ys)));
   ctx.save();
-  ctx.translate(x + leanOx, dy + bounce);
+  ctx.translate(anchorX, anchorY);
   ctx.save();
   ctx.fillStyle = facing > 0 ? 'rgba(57,100,131,.18)' : 'rgba(170,76,58,.18)';
   ctx.beginPath(); ctx.ellipse(0,0,soldier.isKing ? 33 : 26,7,0,0,Math.PI*2); ctx.fill();
@@ -787,20 +793,38 @@ function drawUnitSprite(x, groundY, facing, soldier, pose, ox) {
 /* ========== Canvas 火柴人绘制 ========== */
 const canvas = document.getElementById('arena');
 const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = true;
-ctx.imageSmoothingQuality = 'high';
-
+// Canvas dimensions reset drawing state, so restore precision after every resize.
 function resizeCanvas() {
-  const wrap = canvas.parentElement;
-  const w = wrap.clientWidth;
-  const h = Math.max(245, Math.min(320, w * 0.48));
-  canvas.width = w * Math.min(window.devicePixelRatio || 1,2);
-  canvas.height = h * Math.min(window.devicePixelRatio || 1,2);
+  const w = canvas.parentElement.clientWidth;
+  if (!w) return; // Hidden screens have no usable layout yet.
+  const h = Math.round(Math.max(245, Math.min(320, w * 0.48)));
+  const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
+  const width = Math.round(w * dpr), height = Math.round(h * dpr);
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
-  ctx.setTransform(Math.min(window.devicePixelRatio || 1,2),0,0,Math.min(window.devicePixelRatio || 1,2),0,0);
+  ctx.setTransform(width / w, 0, 0, height / h, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 }
-window.addEventListener('resize', () => { resizeCanvas(); drawArenaIdle(); });
+function refreshArenaSize() {
+  if (state.screen !== 'battle-screen') return;
+  resizeCanvas();
+  drawArenaFrame(); // Preserve current fighters and poses during a resize.
+}
+window.addEventListener('resize', refreshArenaSize);
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(refreshArenaSize).observe(canvas.parentElement);
+}
+// A screen-density change can happen without changing the viewport dimensions.
+function watchDisplayDensity() {
+  const query = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+  query.addEventListener('change', () => { refreshArenaSize(); watchDisplayDensity(); }, { once: true });
+}
+watchDisplayDensity();
 
 function drawStick(x, y, facing, weaponType, color, pose, isKing) {
   // pose: idle | windup | strike | hurt | dead
@@ -2009,8 +2033,8 @@ function endWar() {
   const kingArt = document.getElementById('victoryKing');
   const kingName = winKing ? winKing.name : (winSide === 'blue' ? '金盔大王' : '裂盾大王');
   kingArt.src = winSide === 'blue'
-    ? 'assets/sprites/blue_king.png'
-    : 'assets/sprites/red_king.png';
+    ? 'assets/sprites/blue_king-hd.webp'
+    : 'assets/sprites/red_king-hd.webp';
   kingArt.alt = kingName;
   kingArt.style.transform = winSide === 'red' ? 'scaleX(-1)' : 'none';
 

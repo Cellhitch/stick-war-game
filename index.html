@@ -223,6 +223,61 @@
     0%,100% { filter: brightness(1); }
     50% { filter: brightness(1.8); }
   }
+
+  /* Skill / turn panel */
+  .skill-panel {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--cream);
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    box-shadow: 3px 3px 0 var(--shadow);
+  }
+  .skill-panel.visible { display: flex; }
+  .skill-panel.turn-blue { border-color: var(--blue); }
+  .skill-panel.turn-red { border-color: var(--red); }
+  .turn-label {
+    text-align: center; font-weight: 800; font-size: 1.05rem;
+    padding: 4px 8px; border-radius: 8px;
+  }
+  .turn-label.blue { color: var(--blue); background: rgba(58,110,165,0.12); }
+  .turn-label.red { color: var(--red); background: rgba(196,69,54,0.12); }
+  .skill-btns {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .skill-btns button {
+    font-size: 0.95rem; padding: 12px 10px; border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    line-height: 1.25;
+  }
+  .skill-btns button .skill-name { font-size: 1.1rem; font-weight: 800; }
+  .skill-btns button .skill-desc { font-size: 0.72rem; font-weight: 500; opacity: 0.75; }
+  .skill-btns button.menggong { background: #ffe0b2; }
+  .skill-btns button.gedang { background: #c8e6c9; }
+  .skill-btns button.xuli { background: #bbdefb; }
+  .skill-btns button.teji { background: #f8bbd0; }
+  .status-pills {
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    font-size: 0.75rem; min-height: 1.2em;
+  }
+  .status-pills span {
+    padding: 2px 8px; border-radius: 999px; border: 1.5px solid var(--ink);
+    background: #fff;
+  }
+  .mode-cards { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; }
+  .mode-card {
+    border: 3px solid var(--ink); border-radius: 12px;
+    padding: 14px 16px; background: var(--cream);
+    box-shadow: 3px 3px 0 var(--ink); cursor: pointer;
+    text-align: left;
+  }
+  .mode-card:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--ink); }
+  .mode-card h3 { font-size: 1.15rem; margin-bottom: 4px; }
+  .mode-card p { font-size: 0.85rem; opacity: 0.75; }
+  .mode-card.primary-mode { background: #fff3cd; border-color: var(--gold); }
 </style>
 </head>
 <body>
@@ -407,9 +462,9 @@
     <h2>📜 对战规则</h2>
     <ol>
       <li>站得最高的兵是<strong>大王</strong>，最强但也最后出战。</li>
-      <li>双方每次各派出 <strong>1 名士兵</strong>，进行 1v1 决斗。</li>
-      <li>败者退场，胜者可继续出战或换人。</li>
-      <li>普通士兵全灭后，进入<strong>大王决胜</strong>！</li>
+      <li>双方每次各派出 <strong>1 名士兵</strong>，进入 1v1 决斗。</li>
+      <li>决斗为<strong>回合制</strong>：双方轮流点选招数（猛攻 / 格挡 / 蓄力 / 特技），手机也可两人轮流点。</li>
+      <li>败者退场，胜者可继续出战；普通士兵尽墨后进入<strong>大王决胜</strong>！</li>
       <li>最后倒下的大王所属阵营，输掉整场战争。</li>
     </ol>
     <p style="margin-top:12px;text-align:center;opacity:0.7;font-size:0.9rem;">灵感来自一张手绘火柴人战争涂鸦 ✎</p>
@@ -420,22 +475,32 @@
   </div>
 </section>
 
-<!-- SIDE SELECT -->
+<!-- MODE / SIDE SELECT -->
 <section id="side-screen" class="screen">
-  <h2 style="margin-bottom:8px;">选择你的阵营</h2>
-  <p class="subtitle">另一边由电脑指挥</p>
-  <div class="side-cards">
+  <h2 style="margin-bottom:8px;">选择对战方式</h2>
+  <p class="subtitle">默认双人轮流点招 · 手机也能热座对战</p>
+  <div class="mode-cards">
+    <div class="mode-card primary-mode" id="pickHotseat" role="button" tabindex="0">
+      <h3>👥 双人轮流（推荐）</h3>
+      <p>蓝方与红方轮流选兵、点招数。适合两人同屏操作。</p>
+    </div>
+    <div class="mode-card" id="pickVsAi" role="button" tabindex="0">
+      <h3>🤖 单人 vs 电脑</h3>
+      <p>你操控一方，电脑操控另一方并自动选招。</p>
+    </div>
+  </div>
+  <div id="aiSidePick" class="side-cards" style="margin-top:14px;display:none;">
     <div class="side-card blue" id="pickBlue" role="button" tabindex="0">
-      <h3>🛡 左军 · 蓝方</h3>
-      <p>网盾、长矛、花锤<br>大王：网盾大王</p>
+      <h3>🛡 操控蓝方</h3>
+      <p>网盾、长矛、花锤<br>电脑操控红方</p>
     </div>
     <div class="side-card red" id="pickRed" role="button" tabindex="0">
-      <h3>⚔️ 右军 · 红方</h3>
-      <p>巨矛、星锤、锯刃<br>大王：裂地大王</p>
+      <h3>⚔️ 操控红方</h3>
+      <p>巨矛、星锤、锯刃<br>电脑操控蓝方</p>
     </div>
   </div>
   <div class="btn-row" style="margin-top:18px;">
-    <button id="btnAutoAll">双方自动对战</button>
+    <button id="btnAutoAll">观战 · 双方自动</button>
     <button id="btnSideBack">返回</button>
   </div>
 </section>
@@ -472,12 +537,34 @@
     </div>
   </div>
 
-  <div class="pick-hint hidden" id="pickHint">点击你的士兵出战（大王需等其他士兵退场）</div>
+  <div class="pick-hint hidden" id="pickHint">点击士兵出战（大王需等其他士兵退场）</div>
+
+  <div class="skill-panel" id="skillPanel">
+    <div class="turn-label" id="turnLabel">蓝方回合 · 选择招数</div>
+    <div class="status-pills" id="statusPills"></div>
+    <div class="skill-btns" id="skillBtns">
+      <button type="button" class="menggong" data-move="猛攻">
+        <span class="skill-name">猛攻</span>
+        <span class="skill-desc">造成攻击伤害</span>
+      </button>
+      <button type="button" class="gedang" data-move="格挡">
+        <span class="skill-name">格挡</span>
+        <span class="skill-desc">减伤 · 本回合防御</span>
+      </button>
+      <button type="button" class="xuli" data-move="蓄力">
+        <span class="skill-name">蓄力</span>
+        <span class="skill-desc">下一次猛攻大增</span>
+      </button>
+      <button type="button" class="teji" data-move="特技">
+        <span class="skill-name">特技</span>
+        <span class="skill-desc">破防打击 · 略伤己</span>
+      </button>
+    </div>
+  </div>
 
   <div class="log-box" id="combatLog"></div>
 
   <div class="btn-row">
-    <button id="btnAutoMode">开启自动</button>
     <button id="btnSkipAnim">跳过动画</button>
     <button id="btnSurrender">认输回标题</button>
   </div>
@@ -505,20 +592,21 @@ const ROSTER = {
     { id: 'b3', name: '圆盾兵',   weapon: '圆盾短矛',     hp: 95,  atk: 22, isKing: false, weaponType: 'round' },
     { id: 'b4', name: '网盾大王', weapon: '巨网盾',       hp: 200, atk: 36, isKing: true,  weaponType: 'kingShield' },
   ],
+  /* 红方略加强：HP +约12%、ATK +约12%（体感更强但不崩） */
   red: [
-    { id: 'r1', name: '锯刃勇士', weapon: '锯齿阔剑',     hp: 120, atk: 31, isKing: false, weaponType: 'sword' },
-    { id: 'r2', name: '星锤将',   weapon: '十字星锤',     hp: 112, atk: 29, isKing: false, weaponType: 'star' },
-    { id: 'r3', name: '小矛兵',   weapon: '圆盾短矛',     hp: 88,  atk: 21, isKing: false, weaponType: 'round' },
-    { id: 'r4', name: '弯弓手',   weapon: '弯弓格网',     hp: 92,  atk: 27, isKing: false, weaponType: 'bow' },
-    { id: 'r5', name: '裂地大王', weapon: '裂地巨矛',     hp: 210, atk: 38, isKing: true,  weaponType: 'kingSpear' },
+    { id: 'r1', name: '锯刃勇士', weapon: '锯齿阔剑',     hp: 135, atk: 35, isKing: false, weaponType: 'sword' },
+    { id: 'r2', name: '星锤将',   weapon: '十字星锤',     hp: 126, atk: 33, isKing: false, weaponType: 'star' },
+    { id: 'r3', name: '小矛兵',   weapon: '圆盾短矛',     hp: 100, atk: 24, isKing: false, weaponType: 'round' },
+    { id: 'r4', name: '弯弓手',   weapon: '弯弓格网',     hp: 104, atk: 31, isKing: false, weaponType: 'bow' },
+    { id: 'r5', name: '裂地大王', weapon: '裂地巨矛',     hp: 236, atk: 43, isKing: true,  weaponType: 'kingSpear' },
   ]
 };
 
 /* ========== 状态 ========== */
 let state = {
   screen: 'title',
-  playerSide: null, // 'blue' | 'red' | null (auto both)
-  autoMode: false,
+  mode: 'hotseat', // 'hotseat' | 'vsai' | 'auto'
+  playerSide: null, // in vsai: 'blue' | 'red'; null in hotseat/auto
   fullAuto: false,
   muted: false,
   skipAnim: false,
@@ -528,6 +616,11 @@ let state = {
   fighterR: null,
   battling: false,
   waitingPick: false,
+  pickSide: null, // which side is currently choosing a soldier
+  turnSide: null, // 'blue' | 'red' during duel
+  charge: { blue: false, red: false },
+  guard: { blue: false, red: false },
+  duelResolve: null, // Promise resolve when duel ends
 };
 
 function cloneRoster() {
@@ -537,9 +630,26 @@ function cloneRoster() {
   state.fighterR = null;
   state.battling = false;
   state.waitingPick = false;
-  state.autoMode = false;
+  state.pickSide = null;
+  state.turnSide = null;
+  state.charge = { blue: false, red: false };
+  state.guard = { blue: false, red: false };
   state.fullAuto = false;
   state.skipAnim = false;
+  state.duelResolve = null;
+}
+
+const MOVES = {
+  '猛攻': { desc: '造成攻击伤害' },
+  '格挡': { desc: '本回合大幅减伤' },
+  '蓄力': { desc: '下一次猛攻大增' },
+  '特技': { desc: '破防打击，略伤自己' },
+};
+
+function isHumanSide(side) {
+  if (state.mode === 'hotseat') return true;
+  if (state.mode === 'auto' || state.fullAuto) return false;
+  return state.playerSide === side;
 }
 
 /* ========== 屏幕切换 ========== */
@@ -796,15 +906,13 @@ function renderLists() {
   ['blue', 'red'].forEach(side => {
     const el = document.getElementById(side === 'blue' ? 'listBlue' : 'listRed');
     el.innerHTML = '';
-    const isPlayer = state.playerSide === side;
-    const picking = state.waitingPick && isPlayer && !state.battling;
+    const picking = state.waitingPick && !state.battling && state.pickSide === side;
 
     state[side].forEach(s => {
       const div = document.createElement('div');
       div.className = `soldier-chip ${side}` + (s.isKing ? ' king' : '') + (s.alive ? '' : ' dead');
-      const canPick = picking && s.alive && (!s.isKing || canSendKing(side));
-      // Also allow picking if already fighting and player wants to... no, only when waiting pick and no fighter or need new
-      if (canPick && !getFighter(side)) {
+      const canPick = picking && s.alive && (!s.isKing || canSendKing(side)) && !getFighter(side);
+      if (canPick) {
         div.classList.add('selectable');
         div.onclick = () => pickSoldier(side, s.id);
       }
@@ -818,13 +926,14 @@ function renderLists() {
   });
 
   const hint = document.getElementById('pickHint');
-  if (state.waitingPick && state.playerSide && !state.battling) {
+  if (state.waitingPick && state.pickSide && !state.battling) {
     hint.classList.remove('hidden');
-    const side = state.playerSide;
+    const side = state.pickSide;
+    const label = side === 'blue' ? '蓝方' : '红方';
     if (canSendKing(side)) {
-      hint.textContent = '👑 仅剩大王！点击派出大王决胜！';
+      hint.textContent = `👑 ${label}仅剩大王！点击派出大王决胜！`;
     } else {
-      hint.textContent = '点击你的士兵出战（大王需等其他士兵退场）';
+      hint.textContent = `请${label}点选士兵出战（大王需等其他士兵退场）`;
     }
   } else {
     hint.classList.add('hidden');
@@ -861,6 +970,18 @@ function updateHpBars() {
   } else {
     rn.textContent = '等待出战…'; rb.style.width = '0%'; rnum.textContent = '';
   }
+  updateStatusPills();
+}
+
+function updateStatusPills() {
+  const el = document.getElementById('statusPills');
+  if (!el) return;
+  const pills = [];
+  if (state.charge.blue) pills.push('<span>蓝·蓄力中⚡</span>');
+  if (state.guard.blue) pills.push('<span>蓝·格挡🛡</span>');
+  if (state.charge.red) pills.push('<span>红·蓄力中⚡</span>');
+  if (state.guard.red) pills.push('<span>红·格挡🛡</span>');
+  el.innerHTML = pills.join('');
 }
 
 function log(msg, cls) {
@@ -876,9 +997,36 @@ function setVs(text) {
   document.getElementById('vsBanner').textContent = text;
 }
 
+function hideSkillPanel() {
+  const p = document.getElementById('skillPanel');
+  p.classList.remove('visible', 'turn-blue', 'turn-red');
+  state.turnSide = null;
+}
+
+function showSkillPanel(side) {
+  const p = document.getElementById('skillPanel');
+  const label = document.getElementById('turnLabel');
+  p.classList.add('visible');
+  p.classList.toggle('turn-blue', side === 'blue');
+  p.classList.toggle('turn-red', side === 'red');
+  const name = side === 'blue' ? '蓝方' : '红方';
+  const fighter = getFighter(side);
+  const who = fighter ? fighter.name : '';
+  if (state.mode === 'hotseat') {
+    label.textContent = `${name}回合 · ${who} 请选招`;
+  } else if (isHumanSide(side)) {
+    label.textContent = `你的回合 · ${who} 请选招`;
+  } else {
+    label.textContent = `电脑思考中 · ${who}`;
+  }
+  label.className = 'turn-label ' + side;
+  updateStatusPills();
+}
+
 /* ========== 出战逻辑 ========== */
 function pickSoldier(side, id) {
   if (state.battling) return;
+  if (state.pickSide && state.pickSide !== side) return;
   const s = state[side].find(x => x.id === id);
   if (!s || !s.alive) return;
   if (s.isKing && !canSendKing(side)) {
@@ -898,57 +1046,73 @@ function aiPick(side) {
   let pool = livingNonKing(side);
   if (pool.length === 0) pool = livingAll(side);
   if (pool.length === 0) return null;
-  // Prefer healthier / stronger slightly
   pool = [...pool].sort((a, b) => (b.hp / b.maxHp + b.atk / 40) - (a.hp / a.maxHp + a.atk / 40));
-  // Random among top 2
-  const pick = pool[Math.floor(Math.random() * Math.min(2, pool.length))];
-  return pick;
+  return pool[Math.floor(Math.random() * Math.min(2, pool.length))];
 }
 
-function ensureOpponent() {
-  // Fill AI side if needed
-  if (!state.fighterL && livingAll('blue').length) {
-    if (state.playerSide !== 'blue' || state.fullAuto || state.autoMode) {
-      const p = aiPick('blue');
-      if (p) {
-        setFighter('blue', p);
-        log(`📣 蓝方派出 <strong>${p.name}</strong>（${p.weapon}）！`);
-      }
-    }
-  }
-  if (!state.fighterR && livingAll('red').length) {
-    if (state.playerSide !== 'red' || state.fullAuto || state.autoMode) {
-      const p = aiPick('red');
-      if (p) {
-        setFighter('red', p);
-        log(`📣 红方派出 <strong>${p.name}</strong>（${p.weapon}）！`);
-      }
+function requestPick(side) {
+  if (!livingAll(side).length) return;
+  if (getFighter(side)) return;
+
+  if (isHumanSide(side)) {
+    state.waitingPick = true;
+    state.pickSide = side;
+    setVs(side === 'blue' ? '请蓝方选择出战士兵' : '请红方选择出战士兵');
+    renderLists();
+    updateHpBars();
+    drawArenaIdle();
+  } else {
+    const p = aiPick(side);
+    if (p) {
+      setFighter(side, p);
+      log(`📣 ${side === 'blue' ? '蓝方' : '红方'}派出 <strong>${p.name}</strong>（${p.weapon}）！`);
     }
   }
 }
 
 function tryStartDuel() {
-  ensureOpponent();
+  // Fill missing sides that are AI / auto
+  if (!state.fighterL && livingAll('blue').length && !isHumanSide('blue')) {
+    const p = aiPick('blue');
+    if (p) {
+      setFighter('blue', p);
+      log(`📣 蓝方派出 <strong>${p.name}</strong>（${p.weapon}）！`);
+    }
+  }
+  if (!state.fighterR && livingAll('red').length && !isHumanSide('red')) {
+    const p = aiPick('red');
+    if (p) {
+      setFighter('red', p);
+      log(`📣 红方派出 <strong>${p.name}</strong>（${p.weapon}）！`);
+    }
+  }
+
   updateHpBars();
   renderLists();
   drawArenaIdle();
 
   if (state.fighterL && state.fighterR) {
     state.waitingPick = false;
+    state.pickSide = null;
     renderLists();
     startDuel();
+    return;
+  }
+
+  // Ask next human side that needs a fighter
+  if (!state.fighterL && livingAll('blue').length) {
+    requestPick('blue');
+  } else if (!state.fighterR && livingAll('red').length) {
+    requestPick('red');
   } else {
-    state.waitingPick = true;
+    state.waitingPick = false;
+    state.pickSide = null;
+    setVs('等待出战…');
     renderLists();
-    if (state.playerSide === 'blue' && !state.fighterL) setVs('请选择蓝方出战士兵');
-    else if (state.playerSide === 'red' && !state.fighterR) setVs('请选择红方出战士兵');
-    else setVs('等待出战…');
   }
 }
 
 function checkKingFinale() {
-  const blueOnlyKing = onlyKingLeft('blue') || (livingNonKing('blue').length === 0 && livingAll('blue').some(s => s.isKing && s.alive));
-  const redOnlyKing = onlyKingLeft('red') || (livingNonKing('red').length === 0 && livingAll('red').some(s => s.isKing && s.alive));
   if (canSendKing('blue') && canSendKing('red') &&
       state.blue.some(s => s.isKing && s.alive) &&
       state.red.some(s => s.isKing && s.alive)) {
@@ -964,49 +1128,42 @@ async function startDuel() {
   if (!L || !R) return;
   state.battling = true;
   state.waitingPick = false;
+  state.pickSide = null;
+  state.charge = { blue: false, red: false };
+  state.guard = { blue: false, red: false };
   renderLists();
+  hideSkillPanel();
 
   if (L.isKing && R.isKing) {
     setVs(`👑 ${L.name}  VS  ${R.name} 👑`);
-    log(`<span class="king-msg">🔥 大王对决：${L.name} vs ${R.name}！</span>`, 'king-msg');
+    log(`<span class="king-msg">🔥 大王对决：${L.name} vs ${R.name}！轮流出招！</span>`, 'king-msg');
   } else {
     setVs(`${L.name}  VS  ${R.name}`);
+    log(`⚔️ 决斗开始：轮流选择招数！`);
   }
 
-  // Fight rounds until one falls
+  // Blue goes first each duel
+  let turn = 'blue';
+
   while (L.hp > 0 && R.hp > 0 && state.battling) {
-    // Blue attacks
-    await animateStrike('blue');
-    if (!state.battling) break;
-    const dmgL = calcDamage(L, R);
-    R.hp = Math.max(0, R.hp - dmgL);
-    log(`${L.name} 挥动${L.weapon.split('+')[0]}，对 ${R.name} 造成 <span class="dmg">${dmgL}</span> 伤害！`);
-    sfxHit();
+    state.turnSide = turn;
+    const move = await waitForMove(turn);
+    if (!state.battling || !move) break;
+
+    await resolveMove(turn, move);
     updateHpBars();
     renderLists();
-    if (R.hp <= 0) break;
+    drawArenaIdle();
 
-    await sleep(state.skipAnim ? 80 : 280);
-
-    // Red attacks
-    await animateStrike('red');
-    if (!state.battling) break;
-    const dmgR = calcDamage(R, L);
-    L.hp = Math.max(0, L.hp - dmgR);
-    log(`${R.name} 挥动${R.weapon.split('+')[0]}，对 ${L.name} 造成 <span class="dmg">${dmgR}</span> 伤害！`);
-    sfxHit();
-    updateHpBars();
-    renderLists();
-    if (L.hp <= 0) break;
-
-    await sleep(state.skipAnim ? 80 : 350);
+    if (L.hp <= 0 || R.hp <= 0) break;
+    turn = turn === 'blue' ? 'red' : 'blue';
+    await sleep(state.skipAnim ? 60 : 220);
   }
 
-  // Resolve
+  hideSkillPanel();
   await sleep(state.skipAnim ? 100 : 400);
-  let winnerSide = null;
+
   if (L.hp <= 0 && R.hp <= 0) {
-    // rare double KO — higher remaining fraction wins, else blue
     L.alive = false; R.alive = false;
     log(`💥 同归于尽！双方同时倒下！`);
     await animateDeath('both');
@@ -1016,22 +1173,21 @@ async function startDuel() {
     log(`💀 <strong>${L.name}</strong> 战败退场！${R.name} 获胜！`);
     await animateDeath('blue');
     state.fighterL = null;
-    // winner stays
-    winnerSide = 'red';
-  } else {
+  } else if (R.hp <= 0) {
     R.alive = false;
     log(`💀 <strong>${R.name}</strong> 战败退场！${L.name} 获胜！`);
     await animateDeath('red');
     state.fighterR = null;
-    winnerSide = 'blue';
   }
 
   state.battling = false;
+  state.turnSide = null;
+  state.charge = { blue: false, red: false };
+  state.guard = { blue: false, red: false };
   updateHpBars();
   renderLists();
   drawArenaIdle();
 
-  // Check end of war
   if (!livingAll('blue').length || !livingAll('red').length) {
     await sleep(600);
     endWar();
@@ -1040,8 +1196,6 @@ async function startDuel() {
 
   checkKingFinale();
 
-  // Winner stays on field; loser side needs new pick
-  // Optionally heal a tiny bit for winner (flavor)
   const stayed = state.fighterL || state.fighterR;
   if (stayed && stayed.hp > 0) {
     const heal = Math.min(8, stayed.maxHp - stayed.hp);
@@ -1056,14 +1210,137 @@ async function startDuel() {
   nextRound();
 }
 
-function calcDamage(atk, def) {
-  const variance = 0.75 + Math.random() * 0.5; // 0.75–1.25
-  let dmg = Math.round(atk.atk * variance);
-  // slight defense from being king or high HP ratio
-  if (def.isKing) dmg = Math.round(dmg * 0.92);
-  // crit
-  if (Math.random() < 0.12) {
-    dmg = Math.round(dmg * 1.55);
+function waitForMove(side) {
+  return new Promise(resolve => {
+    state._moveResolve = resolve;
+    showSkillPanel(side);
+
+    if (!isHumanSide(side) || state.fullAuto) {
+      const delay = state.skipAnim ? 80 : 550 + Math.random() * 400;
+      setTimeout(() => {
+        if (state._moveResolve !== resolve) return;
+        const move = aiChooseMove(side);
+        pickMove(move, true);
+      }, delay);
+    }
+  });
+}
+
+function aiChooseMove(side) {
+  const me = getFighter(side);
+  const foe = getFighter(side === 'blue' ? 'red' : 'blue');
+  if (!me || !foe) return '猛攻';
+  const myHp = me.hp / me.maxHp;
+  const foeHp = foe.hp / foe.maxHp;
+  const charged = state.charge[side];
+
+  if (charged) return '猛攻';
+  if (myHp < 0.3 && Math.random() < 0.45) return '格挡';
+  if (foeHp < 0.35 && Math.random() < 0.55) return '特技';
+  if (!charged && Math.random() < 0.28) return '蓄力';
+  if (Math.random() < 0.18) return '格挡';
+  if (Math.random() < 0.22) return '特技';
+  return '猛攻';
+}
+
+function pickMove(moveName, fromAi) {
+  if (!state.battling || !state._moveResolve) return;
+  if (!MOVES[moveName]) return;
+  const side = state.turnSide;
+  if (!side) return;
+  if (!fromAi && !isHumanSide(side)) return;
+
+  const resolve = state._moveResolve;
+  state._moveResolve = null;
+  hideSkillPanel();
+  // keep turnSide until resolve finishes anim label
+  resolve(moveName);
+}
+
+async function resolveMove(side, move) {
+  const me = getFighter(side);
+  const foeSide = side === 'blue' ? 'red' : 'blue';
+  const foe = getFighter(foeSide);
+  if (!me || !foe) return;
+
+  const sideName = side === 'blue' ? '蓝方' : '红方';
+  log(`${sideName}<strong>${me.name}</strong> 使出「${move}」！`);
+
+  // Incoming guard only reduces damage this opponent's attack turn;
+  // Guard set last turn is consumed when hit. Fresh guard this turn protects until next foe attack.
+  if (move === '格挡') {
+    state.guard[side] = true;
+    log(`🛡 ${me.name} 进入格挡姿势，下一击伤害大幅减免！`);
+    await animateStrike(side, 'guard');
+    sfxSelect();
+    return;
+  }
+
+  if (move === '蓄力') {
+    state.charge[side] = true;
+    log(`⚡ ${me.name} 蓄力！下一次猛攻威力大增！`);
+    await animateStrike(side, 'windup');
+    sfxSelect();
+    return;
+  }
+
+  // Offensive moves: 猛攻 / 特技 — clear own guard (you attack, not blocking)
+  state.guard[side] = false;
+
+  let mult = 1;
+  let selfDmg = 0;
+  let pierce = false;
+
+  if (move === '猛攻') {
+    mult = 1;
+    if (state.charge[side]) {
+      mult = 1.85;
+      state.charge[side] = false;
+      log(`💥 蓄力爆发！`);
+    }
+  } else if (move === '特技') {
+    mult = 1.35;
+    pierce = true; // ignore part of guard & king reduction
+    selfDmg = Math.max(4, Math.round(me.atk * 0.12));
+    if (state.charge[side]) {
+      mult = 1.55;
+      state.charge[side] = false;
+      log(`💥 蓄力特技！`);
+    }
+  }
+
+  await animateStrike(side, 'strike');
+  if (!state.battling) return;
+
+  let dmg = calcDamage(me, foe, mult, pierce);
+
+  // Apply foe guard
+  if (state.guard[foeSide]) {
+    const reduced = Math.max(1, Math.round(dmg * (pierce ? 0.55 : 0.35)));
+    log(`🛡 ${foe.name} 格挡生效：${dmg} → <span class="dmg">${reduced}</span>`);
+    dmg = reduced;
+    state.guard[foeSide] = false;
+  }
+
+  foe.hp = Math.max(0, foe.hp - dmg);
+  log(`${me.name} 对 ${foe.name} 造成 <span class="dmg">${dmg}</span> 伤害！`);
+  sfxHit();
+
+  if (selfDmg > 0 && me.hp > 0) {
+    me.hp = Math.max(1, me.hp - selfDmg); // don't suicide via special unless already dying from foe
+    if (foe.hp <= 0) {
+      // ok
+    }
+    log(`特技反噬：${me.name} 自损 <span class="dmg">${selfDmg}</span>`);
+  }
+}
+
+function calcDamage(atk, def, mult = 1, pierce = false) {
+  const variance = 0.8 + Math.random() * 0.4; // 0.8–1.2
+  let dmg = Math.round(atk.atk * variance * mult);
+  if (def.isKing && !pierce) dmg = Math.round(dmg * 0.92);
+  if (Math.random() < 0.1) {
+    dmg = Math.round(dmg * 1.45);
     log(`💥 暴击！`);
   }
   return Math.max(1, dmg);
@@ -1074,22 +1351,25 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-async function animateStrike(side) {
+async function animateStrike(side, kind) {
   const w = canvas.clientWidth, h = canvas.clientHeight;
   const groundY = h - 56;
-  const poses = state.skipAnim ? ['strike'] : ['windup', 'strike', 'idle'];
+  let poses;
+  if (kind === 'guard') poses = state.skipAnim ? ['idle'] : ['idle', 'hurt', 'idle'];
+  else if (kind === 'windup') poses = state.skipAnim ? ['windup'] : ['windup', 'windup', 'idle'];
+  else poses = state.skipAnim ? ['strike'] : ['windup', 'strike', 'idle'];
+
   for (const pose of poses) {
     clearArena();
     if (state.fighterL) {
-      const p = side === 'blue' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
       const ox = side === 'blue' && pose === 'strike' ? 18 : 0;
-      drawStick(w * 0.28 + ox, groundY, 1, state.fighterL.weaponType, '#3a6ea5',
-        side === 'blue' ? pose : (pose === 'strike' ? 'hurt' : 'idle'));
+      const p = side === 'blue' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
+      drawStick(w * 0.28 + ox, groundY, 1, state.fighterL.weaponType, '#3a6ea5', p);
     }
     if (state.fighterR) {
       const ox = side === 'red' && pose === 'strike' ? -18 : 0;
-      drawStick(w * 0.72 + ox, groundY, -1, state.fighterR.weaponType, '#c44536',
-        side === 'red' ? pose : (pose === 'strike' ? 'hurt' : 'idle'));
+      const p = side === 'red' ? pose : (pose === 'strike' ? 'hurt' : 'idle');
+      drawStick(w * 0.72 + ox, groundY, -1, state.fighterR.weaponType, '#c44536', p);
     }
     if (pose === 'strike') {
       canvas.classList.remove('shake');
@@ -1119,30 +1399,25 @@ async function animateDeath(who) {
 }
 
 function nextRound() {
-  // Clear dead fighters already done; if player needs to pick, wait
-  ensureOpponent();
-
-  // If player side needs a fighter and not auto
-  const needPlayerPick = state.playerSide && !state.fullAuto && !state.autoMode &&
-    !getFighter(state.playerSide) && livingAll(state.playerSide).length > 0;
-
-  if (needPlayerPick) {
-    state.waitingPick = true;
-    setVs('请选择下一位出战士兵');
-    renderLists();
-    updateHpBars();
-    drawArenaIdle();
+  hideSkillPanel();
+  // Winner stays; loser side needs new pick
+  if (!state.fighterL && livingAll('blue').length) {
+    requestPick('blue');
+    if (state.fighterL) {
+      // AI already filled
+      if (!state.fighterR && livingAll('red').length) requestPick('red');
+      if (state.fighterL && state.fighterR) {
+        setTimeout(() => startDuel(), state.skipAnim ? 200 : 600);
+      }
+    }
     return;
   }
-
-  // Auto-fill both if needed
-  if (!state.fighterL && livingAll('blue').length) {
-    const p = aiPick('blue');
-    if (p) { setFighter('blue', p); log(`📣 蓝方派出 <strong>${p.name}</strong>！`); }
-  }
   if (!state.fighterR && livingAll('red').length) {
-    const p = aiPick('red');
-    if (p) { setFighter('red', p); log(`📣 红方派出 <strong>${p.name}</strong>！`); }
+    requestPick('red');
+    if (state.fighterL && state.fighterR) {
+      setTimeout(() => startDuel(), state.skipAnim ? 200 : 600);
+    }
+    return;
   }
 
   updateHpBars();
@@ -1150,18 +1425,15 @@ function nextRound() {
   drawArenaIdle();
 
   if (state.fighterL && state.fighterR) {
-    // small delay then duel
     setTimeout(() => startDuel(), state.skipAnim ? 200 : 700);
   } else if (!livingAll('blue').length || !livingAll('red').length) {
     endWar();
-  } else {
-    state.waitingPick = true;
-    renderLists();
   }
 }
 
 function endWar() {
   state.battling = false;
+  hideSkillPanel();
   const blueAlive = livingAll('blue');
   const redAlive = livingAll('red');
   let winSide, winKing;
@@ -1172,7 +1444,6 @@ function endWar() {
     winSide = 'red';
     winKing = redAlive.find(s => s.isKing) || redAlive[0];
   } else {
-    // tiebreaker by remaining HP of kings
     const bk = state.blue.find(s => s.isKing);
     const rk = state.red.find(s => s.isKing);
     if ((bk && bk.alive ? bk.hp : 0) >= (rk && rk.alive ? rk.hp : 0)) {
@@ -1189,7 +1460,6 @@ function endWar() {
   document.getElementById('winnerSide').textContent =
     winSide === 'blue' ? '🛡 左军 · 蓝方 荣光加身！' : '⚔️ 右军 · 红方 荣光加身！';
 
-  // mini svg of winner
   const color = winSide === 'blue' ? '#3a6ea5' : '#c44536';
   document.getElementById('victorySvg').innerHTML = `
     <svg viewBox="0 0 80 100" width="120">
@@ -1208,20 +1478,26 @@ function endWar() {
 }
 
 /* ========== 开始战斗 ========== */
-function beginBattle(playerSide, fullAuto) {
+function beginBattle(mode, playerSide) {
   cloneRoster();
-  state.playerSide = playerSide;
-  state.fullAuto = !!fullAuto;
-  state.autoMode = !!fullAuto;
+  state.mode = mode; // 'hotseat' | 'vsai' | 'auto'
+  state.playerSide = playerSide || null;
+  state.fullAuto = mode === 'auto';
   document.getElementById('combatLog').innerHTML = '';
-  document.getElementById('btnAutoMode').textContent = state.autoMode ? '关闭自动' : '开启自动';
+  hideSkillPanel();
+  document.getElementById('aiSidePick').style.display = 'none';
 
-  if (playerSide === 'blue') {
-    document.getElementById('labelBlue').textContent = '左军 · 蓝方（你）';
-    document.getElementById('labelRed').textContent = '右军 · 红方（电脑）';
-  } else if (playerSide === 'red') {
-    document.getElementById('labelBlue').textContent = '左军 · 蓝方（电脑）';
-    document.getElementById('labelRed').textContent = '右军 · 红方（你）';
+  if (mode === 'hotseat') {
+    document.getElementById('labelBlue').textContent = '左军 · 蓝方（玩家）';
+    document.getElementById('labelRed').textContent = '右军 · 红方（玩家）';
+  } else if (mode === 'vsai') {
+    if (playerSide === 'blue') {
+      document.getElementById('labelBlue').textContent = '左军 · 蓝方（你）';
+      document.getElementById('labelRed').textContent = '右军 · 红方（电脑）';
+    } else {
+      document.getElementById('labelBlue').textContent = '左军 · 蓝方（电脑）';
+      document.getElementById('labelRed').textContent = '右军 · 红方（你）';
+    }
   } else {
     document.getElementById('labelBlue').textContent = '左军 · 蓝方';
     document.getElementById('labelRed').textContent = '右军 · 红方';
@@ -1229,62 +1505,68 @@ function beginBattle(playerSide, fullAuto) {
 
   showScreen('battle-screen');
   resizeCanvas();
-  log('🏕️ 两军对垒！最高者为大王，士兵先行，大王决胜！');
+  log('🏕️ 两军对垒！回合制出招：猛攻 / 格挡 / 蓄力 / 特技。大王最后登场！');
   updateHpBars();
   renderLists();
   drawArenaIdle();
 
-  if (fullAuto || !playerSide) {
-    state.waitingPick = false;
-    nextRound();
-  } else {
-    // AI sends first, player picks
-    const aiSide = playerSide === 'blue' ? 'red' : 'blue';
-    const p = aiPick(aiSide);
-    if (p) {
-      setFighter(aiSide, p);
-      log(`📣 ${aiSide === 'blue' ? '蓝方' : '红方'}派出 <strong>${p.name}</strong>（${p.weapon}）！`);
-    }
-    state.waitingPick = true;
-    setVs('请选择你的出战士兵');
-    updateHpBars();
-    renderLists();
-    drawArenaIdle();
-  }
+  // Blue picks first, then red, then duel
+  tryStartDuel();
 }
 
 /* ========== 按钮绑定 ========== */
-document.getElementById('btnStart').onclick = () => showScreen('side-screen');
+document.getElementById('btnStart').onclick = () => {
+  document.getElementById('aiSidePick').style.display = 'none';
+  showScreen('side-screen');
+};
 document.getElementById('btnRules').onclick = () => showScreen('rules-screen');
-document.getElementById('btnRulesOk').onclick = () => showScreen('side-screen');
+document.getElementById('btnRulesOk').onclick = () => {
+  document.getElementById('aiSidePick').style.display = 'none';
+  showScreen('side-screen');
+};
 document.getElementById('btnRulesBack').onclick = () => showScreen('title-screen');
 document.getElementById('btnSideBack').onclick = () => showScreen('title-screen');
-document.getElementById('pickBlue').onclick = () => beginBattle('blue', false);
-document.getElementById('pickRed').onclick = () => beginBattle('red', false);
-document.getElementById('btnAutoAll').onclick = () => beginBattle(null, true);
-document.getElementById('btnReplay').onclick = () => showScreen('side-screen');
+
+document.getElementById('pickHotseat').onclick = () => beginBattle('hotseat', null);
+document.getElementById('pickVsAi').onclick = () => {
+  const box = document.getElementById('aiSidePick');
+  box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+};
+document.getElementById('pickBlue').onclick = () => beginBattle('vsai', 'blue');
+document.getElementById('pickRed').onclick = () => beginBattle('vsai', 'red');
+document.getElementById('btnAutoAll').onclick = () => beginBattle('auto', null);
+document.getElementById('btnReplay').onclick = () => {
+  document.getElementById('aiSidePick').style.display = 'none';
+  showScreen('side-screen');
+};
 document.getElementById('btnToTitle').onclick = () => showScreen('title-screen');
 
-document.getElementById('btnAutoMode').onclick = () => {
-  state.autoMode = !state.autoMode;
-  document.getElementById('btnAutoMode').textContent = state.autoMode ? '关闭自动' : '开启自动';
-  if (state.autoMode && state.waitingPick && !state.battling) {
-    nextRound();
-  }
-};
 document.getElementById('btnSkipAnim').onclick = () => {
   state.skipAnim = !state.skipAnim;
   document.getElementById('btnSkipAnim').textContent = state.skipAnim ? '恢复动画' : '跳过动画';
 };
 document.getElementById('btnSurrender').onclick = () => {
   state.battling = false;
+  if (state._moveResolve) {
+    const r = state._moveResolve;
+    state._moveResolve = null;
+    r(null);
+  }
+  hideSkillPanel();
   showScreen('title-screen');
 };
 
-// keyboard for side cards
-['pickBlue','pickRed'].forEach(id => {
-  document.getElementById(id).onkeydown = e => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById(id).click(); }
+document.getElementById('skillBtns').onclick = (e) => {
+  const btn = e.target.closest('button[data-move]');
+  if (!btn) return;
+  pickMove(btn.getAttribute('data-move'), false);
+};
+
+['pickHotseat','pickVsAi','pickBlue','pickRed'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
   };
 });
 
